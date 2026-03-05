@@ -1,3 +1,11 @@
+# Misc_utils
+
+This repo is for Ecdysis Foundation miscellaneous utilities and etc.
+
+## DZI image processing
+
+Deep Zoom Image processing ....
+
 ## Bioacoustics
 
 Files in a directory on our local server (0007 - Audio Files) are structured in the same way audio files are stored on an external drive where new files are added from devices as site visits complete. These are generally structured in directories of a 'cluster' with sub directoires labeled with four digit sitecodes. However, there is some variation. Files outside of these sitecode folders may be mistakes of some sort and generally files outside of site-code folders can be ignored.
