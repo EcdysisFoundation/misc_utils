@@ -1,5 +1,6 @@
 ### local misc, ADD STUFF HERE
-local_files/
+local_files/*
+!local_files/__init__.py
 secrets.py
 db_backups/
 *.csv
