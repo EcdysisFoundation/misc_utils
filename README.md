@@ -2,9 +2,13 @@
 
 This repo is for Ecdysis Foundation miscellaneous utilities and etc.
 
+## cleancopy_fastq_dirs.py
+
+This unzips and cleans directories of fastq files in preperation for qiime2
+
 ## DZI image processing
 
-Deep Zoom Image processing ....
+Deep Zoom Image processing, see panorama_tile_to_s3
 
 ## Bioacoustics
 
