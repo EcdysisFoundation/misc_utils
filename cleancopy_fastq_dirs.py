@@ -57,12 +57,11 @@ def do_main():
 
         zip_dir = STARTING_LOCATION + f'/{year}'
         zip_files = [f for f in os.listdir(zip_dir) if f.endswith('.zip')]
-        year_dir = ENDING_LOCATION + f'/{year}'
 
         print(f"Found {len(zip_files)} ZIP archives. Starting extraction...")
         for zip_name in zip_files:
             print(f'working on {zip_name}')
-            save_to_dir = f'{year_dir}/{zip_name.replace('.zip', '')}'
+            save_to_dir = f'{year}/{zip_name.replace('.zip', '')}'
             make_dir(save_to_dir)
             zip_path = os.path.join(zip_dir, zip_name)
             handle_zipfile(zip_path, save_to_dir)
