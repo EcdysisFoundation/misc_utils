@@ -44,12 +44,7 @@ def handle_zipfile(zip_path, save_to_dir):
 
 def do_main():
 
-    zips_processed = 0
-
     for year in YEAR_DIRS:
-        # stop early
-        if zips_processed > 0:
-            break
         print(f'processing year {year}')
 
         make_dir(year)
@@ -67,9 +62,6 @@ def do_main():
             save_to_dir = make_dir(unzip_dir)
             zip_path = os.path.join(zip_dir, zip_name)
             handle_zipfile(zip_path, save_to_dir)
-            # stop early
-            if zips_processed > 0:
-                break
 
 if __name__ == '__main__':
     do_main()
