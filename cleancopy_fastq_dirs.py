@@ -35,9 +35,6 @@ def handle_zipfile(zip_path, save_to_dir):
             if not member.filename.endswith('.fastq.gz'):
                 print(f'Skipping: {member.filename}')
                 continue
-            if re.search(duplicate_pattern, member.filename):
-                print(f'Skipping duplicate: {member.filename}')
-                continue
 
             filename = os.path.basename(member.filename)
             target_path = os.path.join(save_to_dir, filename)
@@ -63,6 +60,9 @@ def do_main():
         print(f"Found {len(zip_files)} ZIP archives. Starting extraction...")
         for zip_name in zip_files:
             print(f'working on {zip_name}')
+            if re.search(duplicate_pattern, zip_name):
+                print(f'Skipping duplicate: {zip_name}')
+                continue
             unzip_dir = f'{year}/{zip_name.replace('.zip', '')}'
             save_to_dir = make_dir(unzip_dir)
             zip_path = os.path.join(zip_dir, zip_name)
