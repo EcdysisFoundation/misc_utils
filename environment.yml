@@ -4,7 +4,7 @@ channels:
   - defaults
 dependencies:
   - python=3.12
-  - pyvips
+  # - pyvips  # for panorama_tile_to_s3
   - pip
   - pip:
     - boto3
