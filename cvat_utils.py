@@ -37,7 +37,7 @@ def create_task_from_directory():
             print(f"Created new project: {project.name}")
 
         # 2. Map the labels, get the images
-        cvat_labels = task.get_labels()
+        cvat_labels = project.get_labels()
         label_name_to_id = {l.name: l.id for l in cvat_labels}
         image_files = sorted([f for f in os.listdir(DATA_DIR) if f.endswith(('.jpg', '.png', '.jpeg'))])
 
