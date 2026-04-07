@@ -1,9 +1,7 @@
 
 import os
-from tqdm import tqdm
 from PIL import Image
 from cvat_sdk import make_client, models
-from cvat_sdk.core.helpers import TqdmProgressReporter
 
 from secrets import CVAT_APIKEY
 
@@ -41,7 +39,8 @@ def create_task_from_directory():
         label_name_to_id = {l.name: l.id for l in cvat_labels}
         image_files = sorted([f for f in os.listdir(DATA_DIR) if f.endswith(('.jpg', '.png', '.jpeg'))])
 
-        for filename in tqdm(image_files, desc="Creating Tasks"):
+        for filename in image_files:
+            print(f'creating task for {filename}...')
             image_path = os.path.join(DATA_DIR, filename)
             label_file = os.path.splitext(filename)[0] + ".txt"
             label_path = os.path.join(DATA_DIR, label_file)
@@ -52,9 +51,9 @@ def create_task_from_directory():
                 project_id=project.id,
             )
             task = client.tasks.create(task_spec)
-            print(f"Created task ID: {task.id}")
+            print(f'Created task ID: {task.id}, uploading {image_path}')
 
-            task.upload_data(image_path, pbar=TqdmProgressReporter(tqdm(disable=True)))
+            task.upload_data(image_path)
 
             if os.path.exists(label_path):
                 # Get image dimensions for de-normalization
