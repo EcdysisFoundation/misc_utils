@@ -1,5 +1,6 @@
 
 import os
+from tqdm import tqdm
 from PIL import Image
 from cvat_sdk import make_client, models
 from cvat_sdk.core.helpers import TqdmProgressReporter
@@ -36,7 +37,7 @@ def create_task_from_directory():
         image_files = sorted([f for f in os.listdir(DATA_DIR) if f.endswith(('.jpg', '.png', '.jpeg'))])
         image_paths = [os.path.join(DATA_DIR, f) for f in image_files]
 
-        task.upload_data(image_paths, pbar=TqdmProgressReporter())
+        task.upload_data(image_paths, pbar=TqdmProgressReporter(tqdm()))
         print("Images uploaded. Processing...")
 
         # 4. Prepare Annotations
