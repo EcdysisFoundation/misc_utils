@@ -22,51 +22,46 @@ def create_task_from_directory():
         client.organization_slug = ORGANIZATION_SLUG
 
         # 1. Get or set project
-        existing_projects = client.projects.list(name=PROJECT_NAME)
+        project = None
+        existing_projects = client.projects.list()
         if existing_projects:
-            project = existing_projects[0]
-            print(f"Using existing project: {project.name} (ID: {project.id})")
-        else:
+            projects = [v.name for v in existing_projects]
+            if PROJECT_NAME in projects:
+                project = existing_projects[projects.index(PROJECT_NAME)]
+                print(f"Using existing project: {project.name} (ID: {project.id})")
+        if not project:
             # Define labels at the Project level
             labels = [{"name": name} for name in LABEL_MAP.values()]
             project_spec = models.ProjectWriteRequest(name=PROJECT_NAME, labels=labels)
             project = client.projects.create(project_spec)
             print(f"Created new project: {project.name}")
 
-        # 2. Create the Task
-        task_spec = models.TaskWriteRequest(
-            name=TASK_NAME,
-            project_id=project.id,
-        )
-        task = client.tasks.create(task_spec)
-        print(f"Created task ID: {task.id}")
-
-        # 3. Upload Images
-        # Note: Sorting ensures file-to-frame consistency
-        image_files = sorted([f for f in os.listdir(DATA_DIR) if f.endswith(('.jpg', '.png', '.jpeg'))])
-        image_paths = [os.path.join(DATA_DIR, f) for f in image_files]
-
-        task.upload_data(image_paths, pbar=TqdmProgressReporter(tqdm()))
-        print("Images uploaded. Processing...")
-
-        # 4. Map the labels
+        # 2. Map the labels, get the images
         cvat_labels = task.get_labels()
         label_name_to_id = {l.name: l.id for l in cvat_labels}
+        image_files = sorted([f for f in os.listdir(DATA_DIR) if f.endswith(('.jpg', '.png', '.jpeg'))])
 
-        # 5. Prepare Annotations
-        shapes = []
-
-        for frame_id, filename in enumerate(image_files):
+        for filename in tqdm(image_files, desc="Creating Tasks"):
+            image_path = os.path.join(DATA_DIR, filename)
             label_file = os.path.splitext(filename)[0] + ".txt"
             label_path = os.path.join(DATA_DIR, label_file)
 
-            if not os.path.exists(label_path):
-                continue
+            # 2. Create the Task
+            task_spec = models.TaskWriteRequest(
+                name=f'Task_{filename}',
+                project_id=project.id,
+            )
+            task = client.tasks.create(task_spec)
+            print(f"Created task ID: {task.id}")
 
-            # Get image dimensions for de-normalization
-            with Image.open(os.path.join(DATA_DIR, filename)) as img:
-                w, h = img.size
+            task.upload_data(image_path, pbar=TqdmProgressReporter(tqdm(disable=True)))
 
+            if os.path.exists(label_path):
+                # Get image dimensions for de-normalization
+                with Image.open(os.path.join(DATA_DIR, filename)) as img:
+                    w, h = img.sizes
+
+            shapes = []
             with open(label_path, 'r') as f:
                 for line in f:
                     parts = line.strip().split()
@@ -82,7 +77,7 @@ def create_task_from_directory():
 
                     # Create the CVAT Shape object
                     shapes.append(models.LabeledShapeRequest(
-                        frame=frame_id,
+                        frame=0,
                         label_id=label_name_to_id[LABEL_MAP[class_id]],
                         type="polygon",
                         points=pixel_coords,
@@ -90,10 +85,10 @@ def create_task_from_directory():
                         attributes=[],
                     ))
 
-        # 6. Push Annotations to CVAT
-        annotation_data = models.LabeledDataRequest(shapes=shapes)
-        task.update_annotations(annotation_data)
-        print(f"Done! Created 1 Task with {len(image_files)} frames and {len(shapes)} polygons.")
+            if shapes:
+                task.update_annotations(models.LabeledDataRequest(shapes=shapes))
+
+    print(f"\nSuccessfully created {len(image_files)} tasks in project '{PROJECT_NAME}'.")
 
 
 if __name__ == '__main__':
