@@ -9,3 +9,5 @@ dependencies:
   - pip:
     - boto3
     - requests
+    - cvat-sdk
+    - pillow
