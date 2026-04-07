@@ -7,7 +7,9 @@ from cvat_sdk.core.helpers import TqdmProgressReporter
 
 from secrets import CVAT_APIKEY
 
-TASK_NAME = 'mytask'
+TASK_NAME = 'sdk_test'
+
+PROJECT_NAME = "SDK Test Project"
 
 BASE_DIR = '/pool1/srv/cvat-tasks/'
 DATA_DIR = f'{BASE_DIR}{TASK_NAME}'
@@ -19,15 +21,22 @@ def create_task_from_directory():
     with make_client('https://app.cvat.ai/', access_token=CVAT_APIKEY) as client:
         client.organization_slug = ORGANIZATION_SLUG
 
-        # 1. Define the Task Labels
-        labels = [
-            {"name": name, "attributes": []} for name in LABEL_MAP.values()
-        ]
+        # 1. Get or set project
+        existing_projects = client.projects.list(name=PROJECT_NAME)
+        if existing_projects:
+            project = existing_projects[0]
+            print(f"Using existing project: {project.name} (ID: {project.id})")
+        else:
+            # Define labels at the Project level
+            labels = [{"name": name} for name in LABEL_MAP.values()]
+            project_spec = models.ProjectWriteRequest(name=PROJECT_NAME, labels=labels)
+            project = client.projects.create(project_spec)
+            print(f"Created new project: {project.name}")
 
         # 2. Create the Task
         task_spec = models.TaskWriteRequest(
-            name="YOLO Segmentation Import",
-            labels=labels,
+            name=TASK_NAME,
+            project_id=project.id,
         )
         task = client.tasks.create(task_spec)
         print(f"Created task ID: {task.id}")
@@ -40,11 +49,11 @@ def create_task_from_directory():
         task.upload_data(image_paths, pbar=TqdmProgressReporter(tqdm()))
         print("Images uploaded. Processing...")
 
-        # 4. get the labels
+        # 4. Map the labels
         cvat_labels = task.get_labels()
         label_name_to_id = {l.name: l.id for l in cvat_labels}
 
-        # 4. Prepare Annotations
+        # 5. Prepare Annotations
         shapes = []
 
         for frame_id, filename in enumerate(image_files):
@@ -64,34 +73,27 @@ def create_task_from_directory():
                     if not parts: continue
 
                     class_id = int(parts[0])
-
-                    yolo_label_name = LABEL_MAP[class_id]
-                    cvat_label_id = label_name_to_id[yolo_label_name]
-
+                    pixel_coords = []
                     coords = [float(x) for x in parts[1:]]
 
-                    # Convert normalized YOLO [x1, y1, x2, y2...] to absolute pixels
-                    # CVAT expects a flat list: [x1, y1, x2, y2, ...]
-                    pixel_coords = []
                     for i in range(0, len(coords), 2):
                         pixel_coords.append(coords[i] * w)     # x
                         pixel_coords.append(coords[i+1] * h)   # y
 
                     # Create the CVAT Shape object
-                    shape = models.LabeledShapeRequest(
+                    shapes.append(models.LabeledShapeRequest(
                         frame=frame_id,
-                        label_id=cvat_label_id,
+                        label_id=label_name_to_id[LABEL_MAP[class_id]],
                         type="polygon",
                         points=pixel_coords,
                         occluded=False,
                         attributes=[],
-                    )
-                    shapes.append(shape)
+                    ))
 
-        # 5. Push Annotations to CVAT
+        # 6. Push Annotations to CVAT
         annotation_data = models.LabeledDataRequest(shapes=shapes)
         task.update_annotations(annotation_data)
-        print(f"Successfully uploaded {len(shapes)} polygons as pre-annotations.")
+        print(f"Done! Created 1 Task with {len(image_files)} frames and {len(shapes)} polygons.")
 
 
 if __name__ == '__main__':
