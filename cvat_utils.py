@@ -53,7 +53,7 @@ def create_task_from_directory():
             task = client.tasks.create(task_spec)
             print(f'Created task ID: {task.id}, uploading {image_path}')
 
-            task.upload_data(image_path)
+            task.upload_data([image_path])
 
             if os.path.exists(label_path):
                 # Get image dimensions for de-normalization
