@@ -58,7 +58,7 @@ def create_task_from_directory():
             if os.path.exists(label_path):
                 # Get image dimensions for de-normalization
                 with Image.open(os.path.join(DATA_DIR, filename)) as img:
-                    w, h = img.sizes
+                    w, h = img.size
 
             shapes = []
             with open(label_path, 'r') as f:
