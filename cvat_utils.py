@@ -40,6 +40,10 @@ def create_task_from_directory():
         task.upload_data(image_paths, pbar=TqdmProgressReporter(tqdm()))
         print("Images uploaded. Processing...")
 
+        # 4. get the labels
+        cvat_labels = task.get_labels()
+        label_name_to_id = {l.name: l.id for l in cvat_labels}
+
         # 4. Prepare Annotations
         shapes = []
 
@@ -60,6 +64,10 @@ def create_task_from_directory():
                     if not parts: continue
 
                     class_id = int(parts[0])
+
+                    yolo_label_name = LABEL_MAP[class_id]
+                    cvat_label_id = label_name_to_id[yolo_label_name]
+
                     coords = [float(x) for x in parts[1:]]
 
                     # Convert normalized YOLO [x1, y1, x2, y2...] to absolute pixels
@@ -72,7 +80,7 @@ def create_task_from_directory():
                     # Create the CVAT Shape object
                     shape = models.LabeledShapeRequest(
                         frame=frame_id,
-                        label_id=next(l.id for l in task.labels if l.name == LABEL_MAP[class_id]),
+                        label_id=cvat_label_id,
                         type="polygon",
                         points=pixel_coords,
                         occluded=False,
