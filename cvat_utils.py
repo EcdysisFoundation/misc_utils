@@ -47,7 +47,7 @@ def create_task_from_directory():
 
             # 2. Create the Task
             task_spec = models.TaskWriteRequest(
-                name=f'Task_{filename}',
+                name=f'{filename}',
                 project_id=project.id,
             )
             task = client.tasks.create(task_spec)
@@ -85,7 +85,7 @@ def create_task_from_directory():
                     ))
 
             if shapes:
-                task.update_annotations(models.LabeledDataRequest(shapes=shapes))
+                task.update_annotations(models.PatchedLabeledDataRequest(shapes=shapes))
 
     print(f"\nSuccessfully created {len(image_files)} tasks in project '{PROJECT_NAME}'.")
 
