@@ -3,7 +3,9 @@ import os
 from PIL import Image
 from cvat_sdk import make_client, models
 
+from gen_utils import extract_guid
 from secrets import CVAT_APIKEY
+from stitcher_api import post_sent_ls
 
 TASK_NAME = 'sdk_test'
 
@@ -88,7 +90,14 @@ def create_task_from_directory():
                 task.update_annotations(models.PatchedLabeledDataRequest(shapes=shapes))
 
     print(f"\nSuccessfully created {len(image_files)} tasks in project '{PROJECT_NAME}'.")
+    return [extract_guid(i) for i in image_files]
 
 
 if __name__ == '__main__':
-    create_task_from_directory()
+    sent_guids = create_task_from_directory()
+    for guid in sent_guids:
+        post_params = {
+            'guid': guid,
+            'project': PROJECT_NAME
+        }
+        post_sent_ls(post_params)

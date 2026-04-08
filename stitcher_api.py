@@ -1,7 +1,7 @@
 import requests
 
 
-STITCHER_URL = 'http://localhost:8090/'
+STITCHER_URL = 'http://ecdysis01.local:8090/'
 
 
 def get_stitcher_data(upload_dir_name=None):
@@ -41,6 +41,19 @@ def get_stitcher_data(upload_dir_name=None):
 
     print(f"Retrieved {len(all_data)} items.")
     return all_data
+
+
+def get_abridged_data_by_guid(guid):
+    api_list_url = STITCHER_URL + 'list-upload-abridged/'
+    try:
+        response = requests.get(api_list_url, params={'guid': guid})
+        if response:
+            if response.status_code != 200:
+                print(f"Error: {response.status_code}")
+        else:
+            print('Response returned None')
+    except Exception as e:
+        print(e)
 
 
 def post_sent_ls(post_params):
