@@ -21,7 +21,7 @@ def create_task_from_directory():
     with make_client('https://app.cvat.ai/', access_token=CVAT_APIKEY) as client:
         client.organization_slug = ORGANIZATION_SLUG
 
-        # 1. Get or set project
+        # Get or set project
         project = None
         existing_projects = client.projects.list()
         if existing_projects:
@@ -36,7 +36,7 @@ def create_task_from_directory():
             project = client.projects.create(project_spec)
             print(f"Created new project: {project.name}")
 
-        # 2. Map the labels, get the images
+        # Map the labels, get the images
         cvat_labels = project.get_labels()
         label_name_to_id = {l.name: l.id for l in cvat_labels}
         image_files = sorted([f for f in os.listdir(DATA_DIR) if f.endswith(('.jpg', '.png', '.jpeg'))])
@@ -47,7 +47,9 @@ def create_task_from_directory():
             label_file = os.path.splitext(filename)[0] + ".txt"
             label_path = os.path.join(DATA_DIR, label_file)
 
-            # 2. Create the Task
+            #TODO: add check if task with this filename already exists. What we do then?
+
+            # Create the Task
             task_spec = models.TaskWriteRequest(
                 name=f'{filename}',
                 project_id=project.id,
