@@ -1,7 +1,9 @@
 import boto3
+import logging
 
 import secrets
 
+logging.basicConfig(level=logging.DEBUG)
 
 S3_CLIENT = boto3.client(
     's3',
@@ -22,11 +24,16 @@ FILES_TO_SEND = [
 ]
 
 
+def upload_progress(bytes_transferred):
+    print(f"{bytes_transferred} bytes uploaded...")
+
+
 def send_file_list():
     for file in FILES_TO_SEND:
+        print(f'sending {file}')
         file_path = f'{BASE_LOCAL_PATH}/{file}'
-        s3_key = f'{BUCKET_SUBDIR}/{file_path}'
-        S3_CLIENT.upload_file(file_path, BUCKET_NAME, s3_key)
+        s3_key = f'{BUCKET_SUBDIR}/{file}'
+        S3_CLIENT.upload_file(file_path, BUCKET_NAME, s3_key, Callback=upload_progress)
 
 
 if __name__ == '__main__':
