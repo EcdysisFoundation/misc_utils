@@ -174,7 +174,7 @@ if __name__ == '__main__':
 
     task_name = 'test2'  # is used as directory name, and expected to be task_name on cvat.ai
     send_these_sites = []   # send based on sitecode example [str(i) for i in range(4111, 4131)]
-    send_these_panos = ['4092_sw_T4', '4092_sw_T3']  # use the upload_dir, example [4308_sw_T2, ...]
+    send_these_panos = []  # use the upload_dir, example [4308_sw_T2, ...]
 
     run_main(
         task_name=task_name,

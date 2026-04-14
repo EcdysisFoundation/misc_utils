@@ -18,10 +18,7 @@ BUCKET_SUBDIR = 'qiime2'
 
 # if nameing individual files within a single directory
 BASE_LOCAL_PATH = '/home/ecdysis/microbiome-omics/output'
-FILES_TO_SEND = [
-    '2022_16s_demux-paired.qzv', '2023_16s_demux-paired.qzv', '2024_16s_demux-paired.qzv',
-    '2022_its_demux-paired.qzv', '2023_its_demux-paired.qzv', '2024_its_demux-paired.qzv'
-]
+FILES_TO_SEND = []
 
 
 def upload_progress(bytes_transferred):

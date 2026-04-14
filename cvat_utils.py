@@ -100,6 +100,7 @@ if __name__ == '__main__':
     for guid in sent_guids:
         post_params = {
             'guid': guid,
-            'project': PROJECT_NAME
+            'project': PROJECT_NAME,
+            'label_project_dir': TASK_NAME
         }
         post_sent_ls(post_params)
