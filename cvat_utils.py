@@ -92,15 +92,16 @@ def create_task_from_directory():
                 task.update_annotations(models.PatchedLabeledDataRequest(shapes=shapes))
 
     print(f"\nSuccessfully created {len(image_files)} tasks in project '{PROJECT_NAME}'.")
-    return [extract_guid(i) for i in image_files]
+    return [(extract_guid(i), os.path.splitext(i)[0] + ".txt") for i in image_files]
 
 
 if __name__ == '__main__':
     sent_guids = create_task_from_directory()
-    for guid in sent_guids:
+    for v in sent_guids:
         post_params = {
-            'guid': guid,
+            'guid': v[0],
             'project': PROJECT_NAME,
-            'label_project_dir': TASK_NAME
+            'label_project_dir': TASK_NAME,
+            'label_file': v[1]
         }
         post_sent_ls(post_params)
