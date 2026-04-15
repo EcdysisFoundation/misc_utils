@@ -5,6 +5,7 @@ import shutil
 from cvat_sdk import make_client
 
 from secrets import CVAT_APIKEY
+from gen_utils import extract_guid
 from stitcher_api import updated_label_post
 
 ##############################################################
@@ -61,7 +62,7 @@ def extract_and_cleanup_labels(zip_path):
                     destination_path = os.path.join(DATA_DIR, file)
                     # Move, overwrite, and keep track
                     shutil.move(source_path, destination_path)
-                    new_file_guids.append(file)
+                    new_file_guids.append(extract_guid(file))
                     print(f'Moved/replaced file {file}')
 
         print(f"Labels successfully moved to: {DATA_DIR}")
@@ -85,6 +86,5 @@ if __name__ == '__main__':
             'guid': guid
         }
         updated_label_post(post_params)
-        print(f'Updated label for guid {guid}')
 
     print('COMPLETED DOWNLOAD AND UPDATE PROCESS')
