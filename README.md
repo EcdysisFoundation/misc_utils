@@ -2,6 +2,10 @@
 
 This repo is for Ecdysis Foundation miscellaneous utilities and etc.
 
+## CVAT.AI labeling projects and the Stitcher API
+
+The files, `cvat_create_project.py` and `cvat_download_labels.py` are used to create cvat.ai projects and update our Stitcher API with cvat.ai exports, respectively. To create a new project, identify site codes or panorama upload directories from the Stitcher (https://github.com/EcdysisFoundation/stitcher) data to use. Create predictions for these using the https://github.com/EcdysisFoundation/ultralytics inference module. This will create a directory of prediction labels. Next, use `cvat_create_project.py`, directing to this new directory, to create a cvat.ai project. Once the project is completed on cvat.ai, use `cvat_download_labels.py` to replace our local copy of labels and notify the Stitcher API they are updated.
+
 ## cleancopy_fastq_dirs.py
 
 This unzips and cleans directories of fastq files in preperation for qiime2

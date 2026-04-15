@@ -7,12 +7,20 @@ from gen_utils import extract_guid
 from secrets import CVAT_APIKEY
 from stitcher_api import post_sent_ls
 
-TASK_NAME = 'sdk_test'
+##############################################################
+### Create a cvat.ai project and populate from outputs of our
+### ultralytics repo inference module
+### TODO: make PROJECT_NAME and TASK_DIR the same in future
+###       in order to only need the cvat id or name,
+###       but make it filename safe
+##############################################################
+
+TASK_DIR = 'sdk_test'
 
 PROJECT_NAME = "SDK Test Project"
 
 BASE_DIR = '/pool1/srv/cvat-tasks/'
-DATA_DIR = f'{BASE_DIR}{TASK_NAME}'
+DATA_DIR = f'{BASE_DIR}{TASK_DIR}'
 LABEL_MAP = {0: 'Arthropod'}
 ORGANIZATION_SLUG = 'Ecdysis'
 
@@ -101,7 +109,7 @@ if __name__ == '__main__':
         post_params = {
             'guid': v[0],
             'project': PROJECT_NAME,
-            'label_project_dir': TASK_NAME,
+            'label_project_dir': TASK_DIR,
             'label_file': v[1]
         }
         post_sent_ls(post_params)
