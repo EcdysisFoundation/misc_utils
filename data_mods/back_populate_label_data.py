@@ -19,9 +19,7 @@ DATA_DIR = f'/pool1/srv/cvat-tasks/{TASK_NAME}'
 def update_recs_from_directory():
 
     label_files = sorted([f for f in os.listdir(DATA_DIR) if f.endswith(('.txt'))])
-    print(label_files)
     guid_map = [(extract_guid(i), i) for i in label_files]
-    print(guid_map)
     for v in guid_map:
         post_params = {
             'guid': v[0],
