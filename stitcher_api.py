@@ -56,8 +56,7 @@ def get_abridged_data_by_guid(guid):
         print(e)
 
 
-def post_sent_ls(post_params):
-    api_post_url = STITCHER_URL + '/sent_label_studio/'
+def simple_post_w_params(api_post_url, post_params):
     try:
         response = requests.post(api_post_url, params=post_params)
         if response:
@@ -67,3 +66,13 @@ def post_sent_ls(post_params):
             print('Response returned None')
     except Exception as e:
         print(e)
+
+
+def post_sent_ls(post_params):
+    api_post_url = STITCHER_URL + '/sent_label_studio/'
+    simple_post_w_params(api_post_url, post_params)
+
+
+def updated_label_post(post_params):
+    api_post_url = STITCHER_URL + '/updated_label/'
+    simple_post_w_params(api_post_url, post_params)
