@@ -24,3 +24,7 @@ def main():
     header = ['sampleid']
     for file in files:
         write_metadata(header, file)
+
+
+if __name__ == '__main__':
+    main()
