@@ -6,13 +6,13 @@ from datetime import datetime
 from pathlib import Path
 from botocore.exceptions import ClientError
 
-import secrets
+import config_secrets
 
 S3_CLIENT = boto3.client(
     's3',
-    aws_access_key_id=secrets.AWS_ACCESS_KEY_ID,
-    aws_secret_access_key=secrets.AWS_SECRET_ACCESS_KEY,
-    region_name=secrets.AWS_REGION,
+    aws_access_key_id=config_secrets.AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=config_secrets.AWS_SECRET_ACCESS_KEY,
+    region_name=config_secrets.AWS_REGION,
 )
 
 CURRENT_DIRECTORY = os.getcwd()

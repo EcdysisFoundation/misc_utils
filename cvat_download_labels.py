@@ -4,7 +4,7 @@ import shutil
 
 from cvat_sdk import make_client
 
-from secrets import CVAT_APIKEY
+from config_secrets import CVAT_APIKEY
 from gen_utils import extract_guid
 from stitcher_api import updated_label_post
 
@@ -76,6 +76,28 @@ def extract_and_cleanup_labels(zip_path):
             print("Deleted the zip file.")
 
     return new_file_guids
+
+
+def download_by_task():
+    # TBD
+    with make_client('https://app.cvat.ai/', access_token=CVAT_APIKEY) as client:
+
+        # 1. Fetch only completed tasks for the project
+        completed_tasks = [
+            task for task in client.tasks.list()
+            if task.project_id == PROJECT_ID and task.status == "completed"
+        ]
+        return completed_tasks
+
+        # 2. Export each task to a unique zip file
+        for task in completed_tasks:
+            filename = f"task_{task.id}_export.zip"
+            task.export_dataset(
+                format_name="COCO 1.0",
+                filename=filename,
+                include_images=True
+            )
+            print(f"Exported {filename}")
 
 
 if __name__ == '__main__':
