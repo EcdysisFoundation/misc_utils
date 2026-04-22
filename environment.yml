@@ -12,3 +12,4 @@ dependencies:
     - cvat-sdk
     - pillow
     - tqdm
+    - supervision
