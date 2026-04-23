@@ -9,7 +9,7 @@ from gen_utils import extract_guid
 
 
 LABEL_DIR = '/pool1/srv/cvat-tasks/sdk_test'
-IMG_SOURCE_DIR = '/poo1/srv/label-studio/mydata/stitchermedia'
+IMG_SOURCE_DIR = '/pool1/srv/label-studio/mydata/stitchermedia'
 DATASET_DIR_BASE = '/home/ecdysis/ultralytics/local_files'
 DATASET = 'evaluation_dataset_1'
 DATASET_DIR = f'{DATASET_DIR_BASE}/{DATASET}'
