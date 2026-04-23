@@ -35,7 +35,8 @@ def extract_pano_part(filename):
     # Search for '__panorama' followed by anything that isn't a dot
     match = re.search(r'__panorama[^.]*', filename)
     if match:
-        return match.group(0)
+        v = match.group(0)[2:]
+        return v
     return None
 
 
