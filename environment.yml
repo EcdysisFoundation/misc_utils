@@ -13,3 +13,4 @@ dependencies:
     - pillow
     - tqdm
     - supervision
+    - pyyaml

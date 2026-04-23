@@ -2,18 +2,56 @@ import os
 import re
 import shutil
 import supervision as sv
+import yaml
 
 from pathlib import Path
+from collections import Counter
 
 from gen_utils import extract_guid
 
 
+# These vars vary per test set
 LABEL_DIR = '/pool1/srv/cvat-tasks/sdk_test'
+DATASET = 'evaluation_dataset_1'
+# These typically will not
 IMG_SOURCE_DIR = '/pool1/srv/label-studio/mydata/stitchermedia'
 DATASET_DIR_BASE = '/home/ecdysis/ultralytics/local_files'
-DATASET = 'evaluation_dataset_1'
 DATASET_DIR = f'{DATASET_DIR_BASE}/{DATASET}'
 TEST_DIR = 'test'
+
+CLASS_NAMES = {
+    0: "Arthropod",
+}
+
+def create_yaml():
+    """
+    Generates the data.yaml file required for YOLO training.
+    """
+    dataset_root = Path(DATASET_DIR)
+    yaml_content = {
+        'path': str(dataset_root.absolute()),
+        'train': 'images/train',
+        'val': 'images/val',
+        'test': f'images/{TEST_DIR}',
+        'names': CLASS_NAMES
+    }
+
+    yaml_path = dataset_root / 'data.yaml'
+
+    with open(yaml_path, 'w') as f:
+        yaml.dump(yaml_content, f, default_flow_style=False, sort_keys=False)
+
+    print(f"Successfully created metadata: {yaml_path}")
+
+
+def get_label_stats(label_dir):
+    stats = Counter()
+    for label_file in Path(label_dir).glob('*.txt'):
+        with open(label_file, 'r') as f:
+            for line in f:
+                class_id = line.split()[0]
+                stats[class_id] += 1
+    return stats
 
 
 def convert_dataset_to_coco():
@@ -96,6 +134,10 @@ def generate_dataset():
         else:
             print(f'Warning: pano_img is not a file, skipped: {pano_img}')
 
+    stats = get_label_stats(dirs['labels'] / TEST_DIR)
+    print(f"Class distribution in {TEST_DIR}: {stats}")
+
 
 if __name__ == '__main__':
     generate_dataset()
+    create_yaml()
