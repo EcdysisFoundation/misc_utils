@@ -85,7 +85,7 @@ def generate_dataset():
             continue
         dirs['images']
 
-        source_label_path = Path(f'{DATASET_DIR}/{file}')
+        source_label_path = Path(f'{LABEL_DIR}/{file}')
         pano_img = Path(f'{IMG_SOURCE_DIR}/{guid}/{pano_name}.jpg')
         file_img = file.replace('.txt', '.jpg')
         dst_img_path = dirs['images'] / TEST_DIR / file_img
