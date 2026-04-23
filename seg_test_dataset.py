@@ -50,7 +50,8 @@ def get_label_stats(label_dir):
         with open(label_file, 'r') as f:
             for line in f:
                 class_id = line.split()[0]
-                stats[class_id] += 1
+                class_name = CLASS_NAMES[int(class_id)]
+                stats[class_name] += 1
     return stats
 
 
@@ -95,7 +96,6 @@ def create_clear_dirs(dir_path, subfolders=(TEST_DIR,)):
         ld.mkdir(parents=True)
 
     return {
-        # THIS needs to return the final dest for image and labels in test dir.
         'images': parent_images,
         'labels': parent_labels
     }
