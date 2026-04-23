@@ -39,7 +39,7 @@ def extract_pano_part(filename):
     return None
 
 
-def create_clear_dirs(dir_path, subfolders=(TEST_DIR)):
+def create_clear_dirs(dir_path, subfolders=(TEST_DIR,)):
     parent_images = Path(dir_path) / 'images'
     parent_labels = Path(dir_path) / 'labels'
 
