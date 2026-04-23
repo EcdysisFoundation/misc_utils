@@ -1,7 +1,8 @@
+import json
 import os
 import re
 import shutil
-import supervision as sv
+# import supervision as sv
 import yaml
 
 from pathlib import Path
@@ -19,11 +20,80 @@ IMG_SOURCE_DIR = '/pool1/srv/label-studio/mydata/stitchermedia'
 DATASET_DIR_BASE = '/home/ecdysis/ultralytics/local_files'
 DATASET_DIR = f'{DATASET_DIR_BASE}/{DATASET}'
 TEST_DIR = 'test'
-Image.MAX_IMAGE_PIXELS = 200000000
+Image.MAX_IMAGE_PIXELS = None
 
 CLASS_NAMES = {
     0: "Arthropod",
 }
+
+
+def get_image_info(image_path, image_id):
+    # PIL.Image.open is "lazy" - it reads metadata without loading all pixels
+    with Image.open(image_path) as img:
+        width, height = img.size
+    return {
+        "id": image_id,
+        "file_name": os.path.basename(image_path),
+        "width": width,
+        "height": height
+    }
+
+def yolo_to_coco_poly(yolo_poly, w, h):
+    """Converts normalized YOLO [x, y, x, y...] to pixel-space [x, y, x, y...]"""
+    return [coord * w if i % 2 == 0 else coord * h for i, coord in enumerate(yolo_poly)]
+
+def convert_to_coco_lite(images_dir, labels_dir, output_json, class_names):
+    coco = {
+        "images": [],
+        "annotations": [],
+        "categories": [{"id": i, "name": name} for i, name in class_names.items()]
+    }
+
+    ann_id = 1
+    image_files = sorted(list(Path(images_dir).glob("*.jpg")))
+
+    for i, img_path in enumerate(image_files):
+        print(f"Processing {img_path.name}...")
+
+        # 1. Get Image Info (Lightweight)
+        img_info = get_image_info(img_path, i)
+        coco["images"].append(img_info)
+
+        # 2. Match with Label
+        label_path = Path(labels_dir) / img_path.with_suffix('.txt').name
+        if not label_path.exists():
+            continue
+
+        with open(label_path, 'r') as f:
+            for line in f:
+                parts = list(map(float, line.strip().split()))
+                class_id = int(parts[0])
+                poly_normalized = parts[1:]
+
+                # Convert to pixel coordinates
+                poly_pixels = yolo_to_coco_poly(poly_normalized, img_info["width"], img_info["height"])
+
+                # Calculate simple Bbox from polygon (min/max x, min/max y)
+                xs = poly_pixels[0::2]
+                ys = poly_pixels[1::2]
+                x_min, y_min, x_max, y_max = min(xs), min(ys), max(xs), max(ys)
+                width, height = x_max - x_min, y_max - y_min
+
+                coco["annotations"].append({
+                    "id": ann_id,
+                    "image_id": i,
+                    "category_id": class_id,
+                    "segmentation": [poly_pixels],
+                    "area": width * height, # Simplified area
+                    "bbox": [x_min, y_min, width, height],
+                    "iscrowd": 0
+                })
+                ann_id += 1
+
+    with open(output_json, 'w') as f:
+        json.dump(coco, f)
+    print(f"Done! Created {output_json}")
+
 
 def create_yaml():
     """
@@ -57,27 +127,27 @@ def get_label_stats(label_dir):
     return stats
 
 
-def convert_dataset_to_coco(subfolders=(TEST_DIR,)):
-    # Load your YOLO segmentation dataset
-    yaml_path = f'{DATASET_DIR}/data.yaml'
-    for sub in subfolders:
-        images_dir = f'{DATASET_DIR}/images/{sub}'
-        labels_dir = f'{DATASET_DIR}/labels/{sub}'
-        dest_json = f'{DATASET_DIR}/dataset_{sub}.json'
+# def convert_dataset_to_coco(subfolders=(TEST_DIR,)):
+#     # Load your YOLO segmentation dataset
+#     yaml_path = f'{DATASET_DIR}/data.yaml'
+#     for sub in subfolders:
+#         images_dir = f'{DATASET_DIR}/images/{sub}'
+#         labels_dir = f'{DATASET_DIR}/labels/{sub}'
+#         dest_json = f'{DATASET_DIR}/dataset_{sub}.json'
 
-        ds = sv.DetectionDataset.from_yolo(
-            images_directory_path=images_dir,
-            annotations_directory_path=labels_dir,
-            data_yaml_path=yaml_path
-        )
+#         ds = sv.DetectionDataset.from_yolo(
+#             images_directory_path=images_dir,
+#             annotations_directory_path=labels_dir,
+#             data_yaml_path=yaml_path
+#         )
 
-        # Export to COCO format (This creates your dataset.json)
-        # replace images_directory_path=None if want to copy them somewhere else
-        ds.as_coco(
-            images_directory_path=None,
-            annotations_path=dest_json
-        )
-        print(f'convert_dataset_to_coco for set {sub} at {dest_json}')
+#         # Export to COCO format (This creates your dataset.json)
+#         # replace images_directory_path=None if want to copy them somewhere else
+#         ds.as_coco(
+#             images_directory_path=None,
+#             annotations_path=dest_json
+#         )
+#         print(f'convert_dataset_to_coco for set {sub} at {dest_json}')
 
 
 def extract_pano_part(filename):
@@ -149,6 +219,11 @@ def generate_dataset():
 
 
 if __name__ == '__main__':
+    dest_json = f'{DATASET_DIR}/dataset_{TEST_DIR}.json'
     generate_dataset()
     create_yaml()
-    convert_dataset_to_coco()
+    convert_to_coco_lite(
+        f'{DATASET_DIR}/images/{TEST_DIR}',
+        f'{DATASET_DIR}/labels/{TEST_DIR}',
+        {dest_json},
+        {CLASS_NAMES})
