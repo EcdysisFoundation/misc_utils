@@ -6,6 +6,7 @@ import yaml
 
 from pathlib import Path
 from collections import Counter
+from PIL import Image
 
 from gen_utils import extract_guid
 
@@ -18,6 +19,7 @@ IMG_SOURCE_DIR = '/pool1/srv/label-studio/mydata/stitchermedia'
 DATASET_DIR_BASE = '/home/ecdysis/ultralytics/local_files'
 DATASET_DIR = f'{DATASET_DIR_BASE}/{DATASET}'
 TEST_DIR = 'test'
+Image.MAX_IMAGE_PIXELS = 200000000
 
 CLASS_NAMES = {
     0: "Arthropod",
@@ -70,8 +72,9 @@ def convert_dataset_to_coco(subfolders=(TEST_DIR,)):
         )
 
         # Export to COCO format (This creates your dataset.json)
+        # replace images_directory_path=None if want to copy them somewhere else
         ds.as_coco(
-            images_directory_path=images_dir,
+            images_directory_path=None,
             annotations_path=dest_json
         )
         print(f'convert_dataset_to_coco for set {sub} at {dest_json}')
