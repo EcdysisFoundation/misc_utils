@@ -92,9 +92,9 @@ def generate_dataset():
         if pano_img.is_file():
             dst_img_path.symlink_to(pano_img)
             shutil.copy(source_label_path, dst_label_path)
+        else:
+            print(f'Warning: pano_img is not a file, skipped: {pano_img}')
 
 
 if __name__ == '__main__':
     generate_dataset()
-
-
