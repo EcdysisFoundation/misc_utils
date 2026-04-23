@@ -127,6 +127,8 @@ def get_label_stats(label_dir):
     return stats
 
 
+# # for 2 images, convert_dataset_to_coco uses 20 CPU and 24GB RAM,
+# # repalced with convert_to_coco_lite which runs instantly
 # def convert_dataset_to_coco(subfolders=(TEST_DIR,)):
 #     # Load your YOLO segmentation dataset
 #     yaml_path = f'{DATASET_DIR}/data.yaml'

@@ -1,3 +1,4 @@
+# conda env update --name misc_utils --file environment.yml
 name: misc_utils
 channels:
   - conda-forge
@@ -12,5 +13,5 @@ dependencies:
     - cvat-sdk
     - pillow
     - tqdm
-    - supervision
+    # - supervision
     - pyyaml
