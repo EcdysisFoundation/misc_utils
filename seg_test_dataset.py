@@ -219,11 +219,10 @@ def generate_dataset():
 
 
 if __name__ == '__main__':
-    dest_json = f'{DATASET_DIR}/dataset_{TEST_DIR}.json'
     generate_dataset()
     create_yaml()
     convert_to_coco_lite(
         f'{DATASET_DIR}/images/{TEST_DIR}',
         f'{DATASET_DIR}/labels/{TEST_DIR}',
-        {dest_json},
-        {CLASS_NAMES})
+        f'{DATASET_DIR}/dataset_{TEST_DIR}.json',
+        CLASS_NAMES)
