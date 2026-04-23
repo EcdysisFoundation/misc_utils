@@ -55,19 +55,25 @@ def get_label_stats(label_dir):
     return stats
 
 
-def convert_dataset_to_coco():
+def convert_dataset_to_coco(subfolders=(TEST_DIR,)):
     # Load your YOLO segmentation dataset
-    ds = sv.DetectionDataset.from_yolo(
-        images_directory_path="path/to/test/images",
-        annotations_directory_path="path/to/test/labels",
-        data_yaml_path="data.yaml"
-    )
+    yaml_path = f'{DATASET_DIR}/data.yaml'
+    dest_yaml = f'{DATASET_DIR}/dataset.json'
+    for sub in subfolders:
+        images_dir = f'{DATASET_DIR}/images/{sub}'
+        labels_dir = f'{DATASET_DIR}/labels/{sub}'
+        ds = sv.DetectionDataset.from_yolo(
+            images_directory_path=images_dir,
+            annotations_directory_path=labels_dir,
+            data_yaml_path=yaml_path
+        )
 
-    # Export to COCO format (This creates your dataset.json)
-    ds.as_coco(
-        images_directory_path="path/to/test/images",
-        annotations_path="dataset.json"
-    )
+        # Export to COCO format (This creates your dataset.json)
+        ds.as_coco(
+            images_directory_path=images_dir,
+            annotations_path=dest_yaml
+        )
+        print(f'convert_dataset_to_coco for set {sub} at {dest_yaml}')
 
 
 def extract_pano_part(filename):
