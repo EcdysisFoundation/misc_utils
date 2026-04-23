@@ -147,3 +147,4 @@ def generate_dataset():
 if __name__ == '__main__':
     generate_dataset()
     create_yaml()
+    convert_dataset_to_coco()
