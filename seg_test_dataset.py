@@ -26,7 +26,7 @@ CLASS_NAMES = {
     0: "Arthropod",
 } # as they appear in YOLO
 # shift by one. YOLO starts at 0 but COCO ignores 0
-CLASS_NAMES_COCO = {i + 1: name for i, name in CLASS_NAMES.items()}
+#CLASS_NAMES_COCO = {i + 1: name for i, name in CLASS_NAMES.items()}
 
 
 def get_image_info(image_path, image_id):
@@ -69,7 +69,7 @@ def convert_to_coco_lite(images_dir, labels_dir, output_json, class_names):
         with open(label_path, 'r') as f:
             for line in f:
                 parts = list(map(float, line.strip().split()))
-                class_id = int(parts[0]) + 1
+                class_id = int(parts[0])# + 1
                 poly_normalized = parts[1:]
 
                 # Convert to pixel coordinates
@@ -107,7 +107,7 @@ def create_yaml():
         'train': 'images/train',
         'val': 'images/val',
         'test': f'images/{TEST_DIR}',
-        'names': CLASS_NAMES_COCO
+        'names': CLASS_NAMES
     }
 
     yaml_path = dataset_root / 'data.yaml'
@@ -124,7 +124,7 @@ def get_label_stats(label_dir):
         with open(label_file, 'r') as f:
             for line in f:
                 class_id = line.split()[0]
-                class_name = CLASS_NAMES_COCO[int(class_id) + 1]
+                class_name = CLASS_NAMES[int(class_id)] # + 1, inside bracket
                 stats[class_name] += 1
     return stats
 
@@ -229,4 +229,4 @@ if __name__ == '__main__':
         f'{DATASET_DIR}/images/{TEST_DIR}',
         f'{DATASET_DIR}/labels/{TEST_DIR}',
         f'{DATASET_DIR}/dataset_{TEST_DIR}.json',
-        CLASS_NAMES_COCO)
+        CLASS_NAMES)
