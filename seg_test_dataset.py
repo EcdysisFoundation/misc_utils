@@ -124,7 +124,7 @@ def get_label_stats(label_dir):
         with open(label_file, 'r') as f:
             for line in f:
                 class_id = line.split()[0]
-                class_name = CLASS_NAMES_COCO[int(class_id)]
+                class_name = CLASS_NAMES_COCO[int(class_id) + 1]
                 stats[class_name] += 1
     return stats
 
