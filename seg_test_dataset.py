@@ -26,7 +26,7 @@ CLASS_NAMES = {
     0: "Arthropod",
 } # as they appear in YOLO
 # shift by one. YOLO starts at 0 but COCO ignores 0
-CLASS_NAMES_COCO = {i + 1: name for i, name in CLASS_NAMES}
+CLASS_NAMES_COCO = {i + 1: name for i, name in CLASS_NAMES.items()}
 
 
 def get_image_info(image_path, image_id):
