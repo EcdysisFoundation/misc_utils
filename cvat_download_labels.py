@@ -23,7 +23,7 @@ BASE_DIR = '/pool1/srv/cvat-tasks/'
 DATA_DIR = f'{BASE_DIR}{TASK_DIR}'
 
 
-def download_labels():
+def download_labels_project():
 # Connect to the server
     with make_client('https://app.cvat.ai/', access_token=CVAT_APIKEY) as client:
         client.organization_slug = ORGANIZATION_SLUG
@@ -87,6 +87,10 @@ def download_by_task():
             task for task in client.tasks.list()
             if task.project_id == PROJECT_ID and task.status == "completed"
         ]
+
+        for c in completed_tasks:
+            print(c)
+
         return completed_tasks
 
         # 2. Export each task to a unique zip file
@@ -101,12 +105,13 @@ def download_by_task():
 
 
 if __name__ == '__main__':
-    zip_file_path = download_labels()
-    new_file_guids = extract_and_cleanup_labels(zip_file_path)
-    for guid in new_file_guids:
-        post_params = {
-            'guid': guid
-        }
-        updated_label_post(post_params)
+    #zip_file_path = download_labels_project()
+    #new_file_guids = extract_and_cleanup_labels(zip_file_path)
+    #for guid in new_file_guids:
+    #    post_params = {
+    #        'guid': guid
+    #    }
+    #    updated_label_post(post_params)
+    download_by_task()
 
     print('COMPLETED DOWNLOAD AND UPDATE PROCESS')
