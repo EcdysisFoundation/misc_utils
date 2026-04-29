@@ -83,8 +83,17 @@ def download_by_task():
     with make_client('https://app.cvat.ai/', access_token=CVAT_APIKEY) as client:
         status = "completed"
         # 1. Fetch only completed tasks for the project
+        task_list = client.tasks.list()
+        print(f'Total tasks: {len(task_list)}')
+
+        current_status = list(set([t.status for t in task_list]))
+        print(f'current_status: {current_status}')
+
+        validation_mode = list(set([t.validation_mode for t in task_list]))
+        print(f'current_validation_mode: {validation_mode}')
+
         completed_tasks = [
-            task for task in client.tasks.list()
+            task for task in task_list
             if task.project_id == PROJECT_ID and task.status == status
         ]
         print(f'Found task status: {status} count: {len(completed_tasks)}')
