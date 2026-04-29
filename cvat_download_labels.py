@@ -79,11 +79,16 @@ def extract_and_cleanup_labels(zip_path):
 
 
 def download_by_task():
+    # see client filters https://docs.cvat.ai/docs/api_sdk/sdk/reference/apis/tasks-api/#list
+    # project_id
     # TBD
+    project_id = PROJECT_ID
     with make_client('https://app.cvat.ai/', access_token=CVAT_APIKEY) as client:
         status = "completed"
         # 1. Fetch only completed tasks for the project
-        task_list = client.tasks.list()
+        task_list = client.tasks.list(
+            project_id=project_id
+        )
         print(f'Total tasks: {len(task_list)}')
 
         current_status = list(set([t.status for t in task_list]))
