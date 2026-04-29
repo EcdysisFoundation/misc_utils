@@ -81,12 +81,13 @@ def extract_and_cleanup_labels(zip_path):
 def download_by_task():
     # TBD
     with make_client('https://app.cvat.ai/', access_token=CVAT_APIKEY) as client:
-
+        status = "completed"
         # 1. Fetch only completed tasks for the project
         completed_tasks = [
             task for task in client.tasks.list()
-            if task.project_id == PROJECT_ID and task.status == "completed"
+            if task.project_id == PROJECT_ID and task.status == status
         ]
+        print(f'Found task status: {status} count: {len(completed_tasks)}')
 
         for c in completed_tasks:
             print(c)
