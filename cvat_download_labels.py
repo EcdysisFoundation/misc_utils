@@ -88,42 +88,34 @@ def download_by_task():
     # see client filters https://docs.cvat.ai/docs/api_sdk/sdk/reference/apis/tasks-api/#list
     # project_id
     # TBD
-    with ApiClient(CONFIGURATION) as api_client:
-        status = "completed"
-        # 1. Fetch only completed tasks for the project
-        (data, response) = api_client.tasks_api.list(
-            x_organization=ORGANIZATION_SLUG,
-            status='completed'
-        )
-        # print(f'Total tasks: {len(data)}')
-        print(data)
-        return
-        current_status = list(set([t.status for t in task_list]))
-        print(f'current_status: {current_status}')
-
-        validation_mode = list(set([t.validation_mode for t in task_list]))
-        print(f'current_validation_mode: {validation_mode}')
-
-        completed_tasks = [
-            task for task in task_list
-            if task.project_id == PROJECT_ID and task.status == status
-        ]
-        print(f'Found task status: {status} count: {len(completed_tasks)}')
-
-        for c in completed_tasks:
-            print(c)
-
-        return completed_tasks
-
-        # 2. Export each task to a unique zip file
-        for task in completed_tasks:
-            filename = f"task_{task.id}_export.zip"
-            task.export_dataset(
-                format_name="COCO 1.0",
-                filename=filename,
-                include_images=True
+    while True:
+        with ApiClient(CONFIGURATION) as api_client:
+            task_ids = []
+            page = 1
+            status = "completed"
+            # 1. Fetch only completed tasks for the project
+            (data, response) = api_client.tasks_api.list(
+                x_organization=ORGANIZATION_SLUG,
+                page=page,
+                status=status,
+                page_size=10
             )
-            print(f"Exported {filename}")
+            for task in data['results']:
+                task_ids.append(task.id)
+            if data['next'] is None:
+                break
+    print(task_ids)
+    return
+
+    # 2. Export each task to a unique zip file
+    for task in completed_tasks:
+        filename = f"task_{task.id}_export.zip"
+        task.export_dataset(
+            format_name="COCO 1.0",
+            filename=filename,
+            include_images=True
+        )
+        print(f"Exported {filename}")
 
 
 if __name__ == '__main__':
