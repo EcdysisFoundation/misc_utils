@@ -1,4 +1,5 @@
 import os
+import time
 import zipfile
 import shutil
 
@@ -17,11 +18,21 @@ from stitcher_api import updated_label_post
 ##############################################################
 
 ORGANIZATION_SLUG = 'Ecdysis'
-PROJECT_ID = 389494
-TASK_DIR = 'sdk_test'
+EXPORT_FORMAT = 'Ultralytics YOLO Segmentation 1.0'
 
-BASE_DIR = '/pool1/srv/cvat-tasks/'
-DATA_DIR = f'{BASE_DIR}{TASK_DIR}'
+# This  is used for Project specific downloads
+PROJECT_ID = 389494
+
+# These are used when a task on cvat has a related task folder locally, normally produced at task or project creation
+TASK_DIR = 'sdk_test'
+BASE_DIR_TASKS = '/pool1/srv/cvat-tasks/'
+DATA_DIR_TASK = f'{BASE_DIR_TASKS}{TASK_DIR}'
+
+# These are for making a new dataset from cvat images, potentially across multiple projects and tasks
+LOCAL_BASE_DIR = '/home/ecdysis/ultralytics/local_files'
+LOCAL_DOWNLOAD_DIR = 'completed_may_1'
+LOCAL_DOWNLOAD_PATH = f'{LOCAL_BASE_DIR}/{LOCAL_DOWNLOAD_DIR}'
+
 
 CONFIGURATION = Configuration(
     host='https://app.cvat.ai/',
@@ -36,12 +47,12 @@ def download_labels_project():
 
         # Retrieve the project object
         project = client.projects.retrieve(PROJECT_ID)
-        zip_file_path = f'{DATA_DIR}.zip'
+        zip_file_path = f'{DATA_DIR_TASK}.zip'
 
         # Export the entire project as one dataset
         # By setting include_images=False, you get only the YOLO segmentation .txt files and data.yaml
         project.export_dataset(
-            format_name="Ultralytics YOLO Segmentation 1.0",
+            format_name=EXPORT_FORMAT,
             filename=zip_file_path,
             include_images=False
         )
@@ -50,7 +61,7 @@ def download_labels_project():
 
 def extract_and_cleanup_labels(zip_path):
     # Ensure final destination exists
-    os.makedirs(DATA_DIR, exist_ok=True)
+    os.makedirs(DATA_DIR_TASK, exist_ok=True)
 
     temp_extract_dir = "temp_cvat_labels"
     new_file_guids = []
@@ -65,13 +76,13 @@ def extract_and_cleanup_labels(zip_path):
             for file in files:
                 if file.endswith(".txt") and file not in ["classes.txt", "train.txt"]:
                     source_path = os.path.join(root, file)
-                    destination_path = os.path.join(DATA_DIR, file)
+                    destination_path = os.path.join(DATA_DIR_TASK, file)
                     # Move, overwrite, and keep track
                     shutil.move(source_path, destination_path)
                     new_file_guids.append(extract_guid(file))
                     print(f'Moved/replaced file {file}')
 
-        print(f"Labels successfully moved to: {DATA_DIR}")
+        print(f"Labels successfully moved to: {DATA_DIR_TASK}")
 
     finally:
         # Clean up: remove temp folder and the original zip
@@ -85,6 +96,9 @@ def extract_and_cleanup_labels(zip_path):
 
 
 def download_by_task():
+    """
+    Downloads all filtered tasks into a single directory.
+    """
     # see client filters https://docs.cvat.ai/docs/api_sdk/sdk/reference/apis/tasks-api/#list
     # project_id
     # TBD
@@ -106,18 +120,55 @@ def download_by_task():
             if data['next'] is None:
                 break
             page += 1
-    print(task_ids)
-    return
+        print(f'Found {len(task_ids)} task ids')
 
-    # 2. Export each task to a unique zip file
-    for task in completed_tasks:
-        filename = f"task_{task.id}_export.zip"
-        task.export_dataset(
-            format_name="COCO 1.0",
-            filename=filename,
-            include_images=True
-        )
-        print(f"Exported {filename}")
+        # 2. Export data
+        os.makedirs(LOCAL_DOWNLOAD_PATH, exist_ok=True)
+
+        for task_id in task_ids:
+            print(f"Processing Task {task_id}...")
+
+            # 1. Download
+            (data, _) = api_client.tasks_api.retrieve_dataset(
+                task_id,
+                format=EXPORT_FORMAT,
+                _parse_response=False
+            )
+
+            zip_path = f"{LOCAL_DOWNLOAD_PATH}/task_{task_id}.zip"
+            with open(zip_path, "wb") as f:
+                f.write(data.data)
+
+            # 2. Extract to a temp folder
+            temp_extract_dir = f"{LOCAL_DOWNLOAD_PATH}/{task_id}"
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(temp_extract_dir)
+
+            # 3. Move and rename files into the master directory
+            # We walk through the extracted files to find images and labels
+            for root, dirs, files in os.walk(temp_extract_dir):
+                for file in files:
+                    if file.endswith(('.jpg', '.png', '.txt')) and "data.yaml" not in file:
+                        # Determine if it's an image or a label based on the folder it's in
+                        subfolder = os.path.relpath(root, temp_extract_dir)
+                        dest_path = os.path.join(LOCAL_DOWNLOAD_PATH, subfolder)
+                        os.makedirs(dest_path, exist_ok=True)
+
+                        # Prefix with task_id to avoid filename collisions
+                        new_filename = f"task_{task_id}_{file}"
+                        shutil.move(os.path.join(root, file), os.path.join(dest_path, new_filename))
+
+                    elif file == "data.yaml":
+                        # Just copy the yaml from the first task; assuming all tasks share the same classes
+                        if not os.path.exists(os.path.join(LOCAL_DOWNLOAD_PATH, "data.yaml")):
+                            shutil.copy(os.path.join(root, file), os.path.join(LOCAL_DOWNLOAD_PATH, "data.yaml"))
+
+            # 4. Cleanup
+            os.remove(zip_path)
+            shutil.rmtree(temp_extract_dir)
+            print(f"Task {task_id} merged.")
+
+    print(f"Done! Your dataset is ready in: {os.path.abspath(LOCAL_DOWNLOAD_PATH)}")
 
 
 if __name__ == '__main__':
