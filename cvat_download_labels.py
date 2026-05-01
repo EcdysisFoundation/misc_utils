@@ -88,11 +88,12 @@ def download_by_task():
     # see client filters https://docs.cvat.ai/docs/api_sdk/sdk/reference/apis/tasks-api/#list
     # project_id
     # TBD
-    while True:
-        with ApiClient(CONFIGURATION) as api_client:
-            task_ids = []
-            page = 1
-            status = "completed"
+
+    with ApiClient(CONFIGURATION) as api_client:
+        task_ids = []
+        page = 1
+        status = "completed"
+        while True:
             # 1. Fetch only completed tasks for the project
             (data, response) = api_client.tasks_api.list(
                 x_organization=ORGANIZATION_SLUG,
@@ -104,6 +105,7 @@ def download_by_task():
                 task_ids.append(task.id)
             if data['next'] is None:
                 break
+            page += 1
     print(task_ids)
     return
 
