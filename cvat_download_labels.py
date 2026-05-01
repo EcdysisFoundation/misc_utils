@@ -4,7 +4,7 @@ import zipfile
 import shutil
 
 from cvat_sdk.api_client import Configuration, ApiClient
-from cvat_sdk import make_client
+from cvat_sdk import make_client, Client
 
 from config_secrets import CVAT_APIKEY
 from gen_utils import extract_guid
@@ -17,6 +17,7 @@ from stitcher_api import updated_label_post
 ###       in order to only need the id or name
 ##############################################################
 
+CVAT_URL = 'https://app.cvat.ai/'
 ORGANIZATION_SLUG = 'Ecdysis'
 EXPORT_FORMAT = 'Ultralytics YOLO Segmentation 1.0'
 
@@ -35,14 +36,14 @@ LOCAL_DOWNLOAD_PATH = f'{LOCAL_BASE_DIR}/{LOCAL_DOWNLOAD_DIR}'
 
 
 CONFIGURATION = Configuration(
-    host='https://app.cvat.ai/',
+    host=CVAT_URL,
     access_token=CVAT_APIKEY
 )
 
 
 def download_labels_project():
 # Connect to the server
-    with make_client('https://app.cvat.ai/', access_token=CVAT_APIKEY) as client:
+    with make_client(CVAT_URL, access_token=CVAT_APIKEY) as client:
         client.organization_slug = ORGANIZATION_SLUG
 
         # Retrieve the project object
@@ -122,19 +123,19 @@ def download_by_task():
             page += 1
         print(f'Found {len(task_ids)} task ids')
 
-        # 2. Export data
-        os.makedirs(LOCAL_DOWNLOAD_PATH, exist_ok=True)
+
+    # 2. Export data, make this a seperate function
+    os.makedirs(LOCAL_DOWNLOAD_PATH, exist_ok=True)
+    with Client(CONFIGURATION) as client:
+        client.organization = ORGANIZATION_SLUG
 
         for task_id in task_ids:
-            print(f"Processing Task {task_id}...")
+            task = client.tasks.retrieve(task_id)
+            # This one method handles the POST, the polling, and the download
+            task.export_dataset(EXPORT_FORMAT, f"{LOCAL_DOWNLOAD_PATH}/task_{task_id}_labels.zip")
 
-            # 1. Download
-            (data, _) = api_client.tasks_api.retrieve_dataset(
-                task_id,
-                format=EXPORT_FORMAT,
-                _parse_response=False
-            )
-
+            continue
+            # save for later
             zip_path = f"{LOCAL_DOWNLOAD_PATH}/task_{task_id}.zip"
             with open(zip_path, "wb") as f:
                 f.write(data.data)
