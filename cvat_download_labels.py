@@ -2,7 +2,8 @@ import os
 import zipfile
 import shutil
 
-from cvat_sdk import make_client, ApiClient, Configuration
+from cvat_sdk.api_client import Configuration, ApiClient
+from cvat_sdk import make_client
 
 from config_secrets import CVAT_APIKEY
 from gen_utils import extract_guid
@@ -23,7 +24,7 @@ BASE_DIR = '/pool1/srv/cvat-tasks/'
 DATA_DIR = f'{BASE_DIR}{TASK_DIR}'
 
 CONFIGURATION = Configuration(
-    host='https://app.cvat.ai/'
+    host='https://app.cvat.ai/',
     access_token=CVAT_APIKEY
 )
 
@@ -87,17 +88,15 @@ def download_by_task():
     # see client filters https://docs.cvat.ai/docs/api_sdk/sdk/reference/apis/tasks-api/#list
     # project_id
     # TBD
-    project_id = PROJECT_ID
     with ApiClient(CONFIGURATION) as api_client:
         status = "completed"
         # 1. Fetch only completed tasks for the project
         (data, response) = api_client.tasks_api.list(
             x_organization=ORGANIZATION_SLUG,
-            project_id=project_id
+            status='completed'
         )
-        print(f'Total tasks: {len(data)}')
-        for d in data:
-            print(d)
+        # print(f'Total tasks: {len(data)}')
+        print(data)
         return
         current_status = list(set([t.status for t in task_list]))
         print(f'current_status: {current_status}')
