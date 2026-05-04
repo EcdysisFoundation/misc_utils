@@ -2,7 +2,6 @@ import json
 import os
 import re
 import shutil
-# import supervision as sv
 import yaml
 
 from pathlib import Path
@@ -127,31 +126,6 @@ def get_label_stats(label_dir):
                 class_name = CLASS_NAMES_COCO[int(class_id) + 1]
                 stats[class_name] += 1
     return stats
-
-
-# # for 2 images, convert_dataset_to_coco uses 20 CPU and 24GB RAM,
-# # repalced with convert_to_coco_lite which runs instantly
-# def convert_dataset_to_coco(subfolders=(TEST_DIR,)):
-#     # Load your YOLO segmentation dataset
-#     yaml_path = f'{DATASET_DIR}/data.yaml'
-#     for sub in subfolders:
-#         images_dir = f'{DATASET_DIR}/images/{sub}'
-#         labels_dir = f'{DATASET_DIR}/labels/{sub}'
-#         dest_json = f'{DATASET_DIR}/dataset_{sub}.json'
-
-#         ds = sv.DetectionDataset.from_yolo(
-#             images_directory_path=images_dir,
-#             annotations_directory_path=labels_dir,
-#             data_yaml_path=yaml_path
-#         )
-
-#         # Export to COCO format (This creates your dataset.json)
-#         # replace images_directory_path=None if want to copy them somewhere else
-#         ds.as_coco(
-#             images_directory_path=None,
-#             annotations_path=dest_json
-#         )
-#         print(f'convert_dataset_to_coco for set {sub} at {dest_json}')
 
 
 def extract_pano_part(filename):
