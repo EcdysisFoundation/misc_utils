@@ -83,7 +83,7 @@ def extract_and_cleanup_labels(zip_path, data_dir_task):
         # Walk through extracted files and find .txt files
         for root, dirs, files in os.walk(temp_extract_dir):
             for file in files:
-                if file.endswith(".txt") and file not in ["classes.txt", "train.txt"]:
+                if file.endswith(".txt") and file.lower() not in ["classes.txt", "train.txt"]:
                     source_path = os.path.join(root, file)
                     destination_path = os.path.join(data_dir_task, file)
                     # Move, overwrite, and keep track
@@ -140,6 +140,7 @@ def download_by_task_id(task_ids, local_download_path):
         client.organization = ORGANIZATION_SLUG
 
         for task_id in task_ids:
+            print(f'Downloading task_id {task_id}, this may take some time...')
             try:
                 task = client.tasks.retrieve(task_id)
                 retrieved_task_count += 1
@@ -162,40 +163,6 @@ def get_zip_file_paths(local_download_path):
     for root, _, files in os.walk(local_download_path):
          result += [f'{root}/{f}' for f in files if f.endswith('.zip')]
     return result
-
-
-def extract_zipped_labels(local_download_path):
-    for root, dirs, files in os.walk(local_download_path):
-        print(root)
-        print(dirs)
-        print(files) # ['task_2160239_labels.zip', 'task_2160223_labels.zip', 'task_2172577_labels.zip', 'task_2160224_labels.zip', 'task_2172752_labels.zip', 'task_2160148_labels.zip', 'task_2160225_labels.zip', 'task_2160226_labels.zip', 'task_2160157_labels.zip', 'task_2160159_labels.zip', 'task_2160212_labels.zip', 'task_2172583_labels.zip', 'task_2160236_labels.zip', 'task_2163329_labels.zip', 'task_2172578_labels.zip', 'task_2160229_labels.zip', 'task_2160221_labels.zip', 'task_2172755_labels.zip']
-
-        return [f'{root}/{f}' for f in files]
-        temp_extract_dir = f"{LOCAL_DOWNLOAD_PATH}/{task_id}"
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(temp_extract_dir)
-        for file in files:
-            if file.endswith(('.jpg', '.png', '.txt')) and "data.yaml" not in file:
-                # Determine if it's an image or a label based on the folder it's in
-                subfolder = os.path.relpath(root, temp_extract_dir)
-                dest_path = os.path.join(LOCAL_DOWNLOAD_PATH, subfolder)
-                os.makedirs(dest_path, exist_ok=True)
-
-                # Prefix with task_id to avoid filename collisions
-                new_filename = f"task_{task_id}_{file}"
-                shutil.move(os.path.join(root, file), os.path.join(dest_path, new_filename))
-
-            elif file == "data.yaml":
-                # Just copy the yaml from the first task; assuming all tasks share the same classes
-                if not os.path.exists(os.path.join(LOCAL_DOWNLOAD_PATH, "data.yaml")):
-                    shutil.copy(os.path.join(root, file), os.path.join(LOCAL_DOWNLOAD_PATH, "data.yaml"))
-
-        # 4. Cleanup
-        os.remove(zip_path)
-        shutil.rmtree(temp_extract_dir)
-        print(f"Task {task_id} merged.")
-
-    print(f"Done! Your dataset is ready in: {os.path.abspath(local_download_path)}")
 
 
 if __name__ == '__main__':
@@ -221,20 +188,22 @@ if __name__ == '__main__':
         local_download_dir = 'completed_may_4'  # move this variable to args
         status = "completed"  # move this variable to args
 
-        local_download_path = f'{LOCAL_BASE_DIR}/{local_download_dir}'
-        local_extracted_path = f'{LOCAL_BASE_DIR}/{local_download_dir}_extracted'
+        guids = []
+
         if args.localsave:
-            # Ensure final destination exists
+            local_download_path = f'{LOCAL_BASE_DIR}/{local_download_dir}'
             os.makedirs(local_download_path, exist_ok=True)
-            os.makedirs(local_extracted_path, exits_ok=True)
             task_ids = get_tasks_by_status(status)
             populated_download_dir = download_by_task_id(task_ids, local_download_path)
             if not populated_download_dir:
                 exit()
             zip_paths = get_zip_file_paths(populated_download_dir)
             for task_zip_path in zip_paths:
-                extracted_files = extract_and_cleanup_labels(task_zip_path, local_extracted_path)
-                print(f'extracted_files: {extracted_files}')
+                extracted_files = extract_and_cleanup_labels(task_zip_path, populated_download_dir)
+                guids += extracted_files
+
+            print(f'Extracted labels for {len(guids)} guids')
+            print(f"Dataset is ready in: {os.path.abspath(local_download_path)}")
 
         else:
             print(f'localsave is the only current save setting for source {ARGS_TASKS}')
