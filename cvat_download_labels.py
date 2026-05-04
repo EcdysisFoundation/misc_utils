@@ -89,7 +89,6 @@ def extract_and_cleanup_labels(zip_path, data_dir_task):
                     # Move, overwrite, and keep track
                     shutil.move(source_path, destination_path)
                     new_file_guids.append(extract_guid(file))
-                    print(f'Moved/replaced file {file}')
 
         print(f"Labels successfully moved to: {data_dir_task}")
 
@@ -99,7 +98,6 @@ def extract_and_cleanup_labels(zip_path, data_dir_task):
             shutil.rmtree(temp_extract_dir)
         if os.path.exists(zip_path):
             os.remove(zip_path)
-            print("Deleted the zip file.")
 
     return new_file_guids
 
