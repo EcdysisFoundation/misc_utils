@@ -4,7 +4,7 @@ import zipfile
 import shutil
 
 from cvat_sdk import make_client
-from cvat_sdk.api_client import Configuration, ApiClient
+from cvat_sdk.api_client import Configuration, ApiClient, exceptions
 from cvat_sdk.api_client.exceptions import ApiException
 
 from config_secrets import CVAT_APIKEY
@@ -12,7 +12,15 @@ from gen_utils import extract_guid
 from stitcher_api import updated_label_post
 
 ##############################################################
-### Download CVAT.ai labels for project, tasks, or jobs.
+# Download CVAT.ai labels for project, tasks, or jobs.
+#
+# Standard use is to use options...
+# --source jobs
+# --project-name 'myproject'
+# --task-name 'mytask' # but only after we have mutliple jobs per task.
+# --task-dir 'mydir' # the dir at BASE_DIR_TASKS where the download will replace files
+#
+# Evaulation use is to use options...
 ##############################################################
 
 CVAT_URL = 'https://app.cvat.ai/'
@@ -45,6 +53,42 @@ def get_args() -> argparse.Namespace:
         '--localsave',
         action='store_true',
         help="Enables saving to local_download_path"
+    )
+    parser.add_argument(
+        '--status',
+        default='completed',
+        help='Status filter, defaults to completed'
+    )
+    parser.add_argument(
+        '--local-download-dir',
+        help='For use with localsave, required in that case'
+    )
+    parser.add_argument(
+        '--project-id',
+        type=int,
+        help="The project ID, required with source=project"
+    )
+    parser.add_argument(
+        '--task-dir',
+        help=f'Directory in {BASE_DIR_TASKS} where tasks exist'
+    )
+    parser.add_argument(
+        '--project-name',
+        help='The project name search string'
+    )
+    parser.add_argument(
+        '--task-name',
+        help='The cvat.ai task name filter'
+    )
+    parser.add_argument(
+        '--stage',
+        default='acceptance',
+        help=f'The cvat.ai stage field filter'
+    )
+    parser.add_argument(
+        '--state',
+        default='completed',
+        help=f'The cvat.ai stage field filter'
     )
     args = parser.parse_args()
     print(f'--source set to {args.source}')
@@ -119,8 +163,7 @@ def get_tasks_by_status(status):
                 status=status,
                 page_size=10
             )
-            for task in data['results']:
-                task_ids.append(task.id)
+            task_ids += [task.id for task in data['results']]
             if data['next'] is None:
                 break
             page += 1
@@ -128,12 +171,11 @@ def get_tasks_by_status(status):
     return task_ids
 
 
-def download_by_task_id(task_ids, local_download_path):
+def download_by_task_id(task_ids, download_path):
     """
     Downloads task images by id to central directory.
     """
     retrieved_task_count = 0
-    os.makedirs(local_download_path, exist_ok=True)
     with make_client(CVAT_URL, access_token=CVAT_APIKEY) as client:
         client.organization = ORGANIZATION_SLUG
 
@@ -143,7 +185,7 @@ def download_by_task_id(task_ids, local_download_path):
                 task = client.tasks.retrieve(task_id)
                 retrieved_task_count += 1
                 # This one method handles the POST, the polling, and the download
-                task.export_dataset(EXPORT_FORMAT, f"{local_download_path}/task_{task_id}_labels.zip")
+                task.export_dataset(EXPORT_FORMAT, f"{download_path}/task_{task_id}_labels.zip")
                 retrieved_task_count += 1
             except ApiException as e:
                 if e.status == 404:
@@ -151,8 +193,8 @@ def download_by_task_id(task_ids, local_download_path):
                 else:
                     print(f"Error retrieving Task. Skipping {task_id}: {e}")
     if retrieved_task_count:
-        print(f'Downloaded {retrieved_task_count} records to {local_download_path}')
-        return local_download_path
+        print(f'Downloaded {retrieved_task_count} records to {download_path}')
+        return download_path
     return None
 
 
@@ -163,16 +205,55 @@ def get_zip_file_paths(local_download_path):
     return result
 
 
-if __name__ == '__main__':
-    args = get_args()
+def get_filtered_job_ids(args):
+    """
+    https://docs.cvat.ai/docs/api_sdk/sdk/reference/apis/jobs-api/#example-5
+    """
+    if not args.project_name:
+        print('get_filtered_job_ids requires option --project-name, returning None')
+        return
+    if not args.task_name:
+        print('get_filtered_job_ids will require option --task-name when organizing images per task instead of per project.')
+    else:
+        print(f'get_filtered_job_ids currently igores option --task-name {args.task_name}')
+    with ApiClient(CONFIGURATION) as api_client:
+        job_ids = []
+        page = 1
+        while True:
+            try:
+                (data, response) = api_client.jobs_api.list(
+                    x_organization=ORGANIZATION_SLUG,
+                    page=page,
+                    page_size=10,
+                    project_name=args.project_name,
+                    stage=args.stage,
+                    state=args.state,
+                    # task_name=args.task_name,
+                )
+                job_ids += [job.id for job in data['results']]
+                if data['next'] is None:
+                    break
+                page += 1
+            except exceptions.ApiException as e:
+                print("Exception when calling JobsApi.list(): %s\n" % e)
+                break
+        print(f'Found {len(job_ids)} job ids')
+        return job_ids
+
+
+def main(args):
 
     if args.source == ARGS_PROJECT:
+        """
+        This only supports the case where
+        CVAT.ai project == data_dir_task == f'{BASE_DIR_TASKS}{args.task_dir}'
+        """
+        if not args.project_id and args.task_dir:
+            print(f'args --project-id and --task-dir are required when source==project')
+            return
 
-        project_id = 389494  # move this variable to args
-        task_dir = 'sdk_test'  # move this variable to args
-
-        data_dir_task = f'{BASE_DIR_TASKS}{task_dir}'
-        zip_file_path = download_labels_project(project_id, data_dir_task)
+        data_dir_task = f'{BASE_DIR_TASKS}{args.task_dir}'
+        zip_file_path = download_labels_project(args.project_id, data_dir_task)
         new_file_guids = extract_and_cleanup_labels(zip_file_path, data_dir_task)
         for guid in new_file_guids:
             post_params = {
@@ -183,18 +264,20 @@ if __name__ == '__main__':
 
     elif args.source == ARGS_TASKS:
 
-        local_download_dir = 'completed_may_4'  # move this variable to args
-        status = "completed"  # move this variable to args
-
         guids = []
 
         if args.localsave:
-            local_download_path = f'{LOCAL_BASE_DIR}/{local_download_dir}'
+            if not args.local_download_dir:
+                print(f'Option --local-download-dir when using --localsave, exiting..')
+                return
+            if args.task_dir:
+                print(f'Option --task-dir not supported when localsave is True, ignoring {args.task_dir}')
+            local_download_path = f'{LOCAL_BASE_DIR}/{args.local_download_dir}'
             os.makedirs(local_download_path, exist_ok=True)
-            task_ids = get_tasks_by_status(status)
+            task_ids = get_tasks_by_status(args.status)
             populated_download_dir = download_by_task_id(task_ids, local_download_path)
             if not populated_download_dir:
-                exit()
+                return
             zip_paths = get_zip_file_paths(populated_download_dir)
             for task_zip_path in zip_paths:
                 extracted_files = extract_and_cleanup_labels(task_zip_path, populated_download_dir)
@@ -204,9 +287,19 @@ if __name__ == '__main__':
             print(f"Dataset is ready in: {os.path.abspath(local_download_path)}")
 
         else:
+            if not args.task_dir:
+                print(f'Option --task-dir is required when source=tasks and localsave is False')
+                return
             print(f'localsave is the only current save setting for source {ARGS_TASKS}')
 
     elif args.source == ARGS_JOBS:
-        print(f'Source == {ARGS_JOBS} is not implemented')
+        job_ids = get_filtered_job_ids(args)
 
     print('COMPLETED DOWNLOAD AND UPDATE PROCESS')
+
+
+if __name__ == '__main__':
+    args = get_args()
+    main(args)
+
+
