@@ -1,13 +1,16 @@
 import argparse
 import os
 import logging
-
 import boto3
 from botocore.exceptions import ClientError
-
 import config_secrets
 
-logging.basicConfig(level=logging.DEBUG)
+
+logging.basicConfig(level=logging.INFO)
+# Specifically silence the chatty libraries
+logging.getLogger('boto3').setLevel(logging.WARNING)
+logging.getLogger('botocore').setLevel(logging.WARNING)
+logging.getLogger('urllib3').setLevel(logging.WARNING)
 
 S3_CLIENT = boto3.client(
     's3',
@@ -16,9 +19,10 @@ S3_CLIENT = boto3.client(
     region_name=config_secrets.AWS_REGION,
 )
 
-
 BUCKET_NAME = 'ecdysis-public'
 BUCKET_SUBDIR = 'qiime2'
+# Setting threshold to 1GB. Adjust this as needed.
+MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024 * 1024
 
 
 def get_args() -> argparse.Namespace:
@@ -39,6 +43,14 @@ def upload_progress(bytes_transferred):
     print(f"{bytes_transferred} bytes uploaded...")
 
 
+def format_bytes(size):
+    """Converts bytes to a human-readable string."""
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if size < 1024:
+            return f"{size:.2f} {unit}"
+        size /= 1024
+
+
 def send_file(args):
     print(f'sending {args.file}')
     file_path = f'{args.base_local_path}/{args.file}'
@@ -46,22 +58,27 @@ def send_file(args):
     S3_CLIENT.upload_file(file_path, BUCKET_NAME, s3_key, Callback=upload_progress)
 
 
-def file_exists_in_s3(s3_key):
-    """Checks if a file exists in the S3 bucket."""
-    try:
-        S3_CLIENT.head_object(Bucket=BUCKET_NAME, Key=s3_key)
-        return True
-    except ClientError as e:
-        # 404 means the object does not exist
-        if e.response['Error']['Code'] == "404":
-            return False
-        # If it's another error (like 403), re-raise it
-        raise
+def get_all_s3_keys(bucket, prefix):
+    """
+    Lists all keys in S3.
+    """
+    keys = set()
+    paginator = S3_CLIENT.get_paginator('list_objects_v2')
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        if 'Contents' in page:
+            for obj in page['Contents']:
+                keys.add(obj['Key'])
+    return keys
 
 
 def sync_local_to_s3(args):
-    """Scans local directory and uploads missing files to S3."""
-    # os.walk yields a 3-tuple (dirpath, dirnames, filenames)
+    """
+    Scans local directory and uploads missing files to S3.
+    """
+    print("Fetching existing file list from S3 (please wait)...")
+    existing_keys = get_all_s3_keys(BUCKET_NAME, BUCKET_SUBDIR)
+    print(f"Found {len(existing_keys)} files already in S3.")
+
     for root, dirs, files in os.walk(args.base_local_path):
         for filename in files:
             # Construct the full local path
@@ -70,9 +87,15 @@ def sync_local_to_s3(args):
             # Construct the S3 key relative to the BASE_LOCAL_PATH
             # This maintains your directory structure in S3
             relative_path = os.path.relpath(local_path, args.base_local_path)
-            s3_key = os.path.join(BUCKET_SUBDIR, relative_path).replace("\\", "/")
+            s3_key = f"{BUCKET_SUBDIR}/{relative_path}".replace("\\", "/")
 
-            if not file_exists_in_s3(s3_key):
+            # Check File Size First
+            file_size = os.path.getsize(local_path)
+            if file_size > MAX_FILE_SIZE_BYTES:
+                print(f"⚠️  SKIPPING: {relative_path} is too large ({format_bytes(file_size)})")
+                continue
+
+            if s3_key not in existing_keys:
                 print(f"Uploading: {relative_path} -> s3://{BUCKET_NAME}/{s3_key}")
                 try:
                     S3_CLIENT.upload_file(
@@ -82,7 +105,7 @@ def sync_local_to_s3(args):
                         Callback=upload_progress
                     )
                 except Exception as e:
-                    print(f"Failed to upload {filename}: {e}")
+                    print(f"❌ Failed to upload {filename}: {e}")
             else:
                 print(f"Skipping (already exists): {s3_key}")
 
@@ -95,5 +118,7 @@ if __name__ == '__main__':
         print('..Completed')
     else:
         print(f'Sending files in {args.base_local_path} that dont already exist, by filename')
+        print(f'Max files size is limited to {format_bytes(MAX_FILE_SIZE_BYTES)}')
+        print('Use option --file to specifiy large files')
         sync_local_to_s3(args)
         print('..Completed')
