@@ -81,13 +81,12 @@ def sync_local_to_s3(args):
 
     for root, dirs, files in os.walk(args.base_local_path):
         for filename in files:
-            # Construct the full local path
+            if filename.endswith('.py'):
+                continue
             local_path = os.path.join(root, filename)
-
-            # Construct the S3 key relative to the BASE_LOCAL_PATH
-            # This maintains your directory structure in S3
             relative_path = os.path.relpath(local_path, args.base_local_path)
-            s3_key = f"{BUCKET_SUBDIR}/{relative_path}".replace("\\", "/")
+            flattened_name = relative_path.replace(os.sep, "_")
+            s3_key = f"{BUCKET_SUBDIR}/{flattened_name}".replace("\\", "/")
 
             # Check File Size First
             file_size = os.path.getsize(local_path)
