@@ -21,6 +21,8 @@ S3_CLIENT = boto3.client(
 
 BUCKET_NAME = 'ecdysis-public'
 BUCKET_SUBDIR = 'qiime2'
+# Setting threshold to 1GB. Adjust this as needed.
+MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024 * 1024
 
 
 def get_args() -> argparse.Namespace:
@@ -39,6 +41,14 @@ def get_args() -> argparse.Namespace:
 
 def upload_progress(bytes_transferred):
     print(f"{bytes_transferred} bytes uploaded...")
+
+
+def format_bytes(size):
+    """Converts bytes to a human-readable string."""
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if size < 1024:
+            return f"{size:.2f} {unit}"
+        size /= 1024
 
 
 def send_file(args):
@@ -79,6 +89,12 @@ def sync_local_to_s3(args):
             relative_path = os.path.relpath(local_path, args.base_local_path)
             s3_key = f"{BUCKET_SUBDIR}/{relative_path}".replace("\\", "/")
 
+            # Check File Size First
+            file_size = os.path.getsize(local_path)
+            if file_size > MAX_FILE_SIZE_BYTES:
+                print(f"⚠️  SKIPPING: {relative_path} is too large ({format_bytes(file_size)})")
+                continue
+
             if s3_key not in existing_keys:
                 print(f"Uploading: {relative_path} -> s3://{BUCKET_NAME}/{s3_key}")
                 try:
@@ -89,7 +105,7 @@ def sync_local_to_s3(args):
                         Callback=upload_progress
                     )
                 except Exception as e:
-                    print(f"Failed to upload {filename}: {e}")
+                    print(f"❌ Failed to upload {filename}: {e}")
             else:
                 print(f"Skipping (already exists): {s3_key}")
 
@@ -102,5 +118,7 @@ if __name__ == '__main__':
         print('..Completed')
     else:
         print(f'Sending files in {args.base_local_path} that dont already exist, by filename')
+        print(f'Max files size is limited to {format_bytes(MAX_FILE_SIZE_BYTES)}')
+        print('Use option --file to specifiy large files')
         sync_local_to_s3(args)
         print('..Completed')
