@@ -46,7 +46,7 @@ def resize_all_imgs_in_dir(args):
     deleted_files = 0
     for root, dirs, files in os.walk(args.base_local_path):
         for filename in files:
-            suffix = Path(args.file).suffix
+            suffix = Path(filename).suffix
             if suffix.lower() not in ['.jpg', '.png']:
                 continue
             file_path = get_file_path(root, filename)
