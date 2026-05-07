@@ -30,8 +30,8 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def get_file_path(args, file):
-    return f'{args.base_local_path}/{file}'
+def get_file_path(root, file):
+    return f'{root}/{file}'
 
 
 def get_thumbnail_path(args, file_path):
@@ -49,7 +49,7 @@ def resize_all_imgs_in_dir(args):
             suffix = Path(args.file).suffix
             if suffix.lower() not in ['.jpg', '.png']:
                 continue
-            file_path = get_file_path(args, filename)
+            file_path = get_file_path(root, filename)
             file_path_thumbnail = get_thumbnail_path(args, file_path)
             print(f'Resizing {file_path}')
             load_resize_and_save_thumbnail(
@@ -67,7 +67,7 @@ if __name__ == '__main__':
     if args.delete_original:
         print(f'Warning: --delete-original is set to True')
     if args.file:
-        file_path = get_file_path(args, args.file)
+        file_path = get_file_path(args.base_local_path, args.file)
         file_path_thumbnail = get_thumbnail_path(args, file_path)
         load_resize_and_save_thumbnail(
             file_path, file_path_thumbnail, args.resize_width)
