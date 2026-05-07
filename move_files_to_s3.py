@@ -20,7 +20,6 @@ S3_CLIENT = boto3.client(
 )
 
 BUCKET_NAME = 'ecdysis-public'
-BUCKET_SUBDIR = 'qiime2'
 # Setting threshold to 1GB. Adjust this as needed.
 MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024 * 1024
 
@@ -35,6 +34,11 @@ def get_args() -> argparse.Namespace:
         '--base-local-path',
         default='/home/ecdysis/microbiome-omics/output',
         help='Change the default base local path'
+    )
+    parser.add_argument(
+        '--bucket-subdir',
+        default='qiime2',
+        help='Change the deault bucket subdir'
     )
     return parser.parse_args()
 
@@ -54,7 +58,7 @@ def format_bytes(size):
 def send_file(args):
     print(f'sending {args.file}')
     file_path = f'{args.base_local_path}/{args.file}'
-    s3_key = f'{BUCKET_SUBDIR}/{args.file}'
+    s3_key = f'{args.bucket_subdir}/{args.file}'
     S3_CLIENT.upload_file(file_path, BUCKET_NAME, s3_key, Callback=upload_progress)
 
 
@@ -76,7 +80,7 @@ def sync_local_to_s3(args):
     Scans local directory and uploads missing files to S3.
     """
     print("Fetching existing file list from S3 (please wait)...")
-    existing_keys = get_all_s3_keys(BUCKET_NAME, BUCKET_SUBDIR)
+    existing_keys = get_all_s3_keys(BUCKET_NAME, args.bucket_subdir)
     print(f"Found {len(existing_keys)} files already in S3.")
 
     for root, dirs, files in os.walk(args.base_local_path):
@@ -86,7 +90,7 @@ def sync_local_to_s3(args):
             local_path = os.path.join(root, filename)
             relative_path = os.path.relpath(local_path, args.base_local_path)
             flattened_name = relative_path.replace(os.sep, "_")
-            s3_key = f"{BUCKET_SUBDIR}/{flattened_name}".replace("\\", "/")
+            s3_key = f"{args.bucket_subdir}/{flattened_name}".replace("\\", "/")
 
             # Check File Size First
             file_size = os.path.getsize(local_path)
