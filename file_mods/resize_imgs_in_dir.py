@@ -30,14 +30,14 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def get_file_path(args, file):
-    return f'{args.base_local_path}/{file}'
+def get_file_path(root, file):
+    return f'{root}/{file}'
 
 
-def get_thumbnail_path(args, file_path):
-    name_only = Path(file_path).stem
-    suffix = Path(file_path).suffix
-    file_path_thumbnail = f'{args.base_local_path}/{name_only}_thumbnail{suffix}'
+def get_thumbnail_path(root, filename):
+    name_only = Path(filename).stem
+    suffix = Path(filename).suffix
+    file_path_thumbnail = f'{root}/{name_only}_thumbnail{suffix}'
     return file_path_thumbnail
 
 
@@ -49,8 +49,8 @@ def resize_all_imgs_in_dir(args):
             suffix = Path(args.file).suffix
             if suffix.lower() not in ['.jpg', '.png']:
                 continue
-            file_path = get_file_path(args, filename)
-            file_path_thumbnail = get_thumbnail_path(args, file_path)
+            file_path = get_file_path(root, filename)
+            file_path_thumbnail = get_thumbnail_path(root, filename)
             print(f'Resizing {file_path}')
             load_resize_and_save_thumbnail(
                 file_path, file_path_thumbnail, args.resize_width)
@@ -67,8 +67,8 @@ if __name__ == '__main__':
     if args.delete_original:
         print(f'Warning: --delete-original is set to True')
     if args.file:
-        file_path = get_file_path(args, args.file)
-        file_path_thumbnail = get_thumbnail_path(args, file_path)
+        file_path = get_file_path(args.base_local_path, args.file)
+        file_path_thumbnail = get_thumbnail_path(args.base_local_path, args.file)
         load_resize_and_save_thumbnail(
             file_path, file_path_thumbnail, args.resize_width)
         print(f'Completed resize of {file_path}')
