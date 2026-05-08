@@ -107,3 +107,7 @@ def main():
         # Now you can run the annotation logic
         if all_shapes:
             upload_annotations_with_retry(task, all_shapes)
+
+
+if __name__ == '__main__':
+    main()
