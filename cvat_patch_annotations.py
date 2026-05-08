@@ -106,7 +106,8 @@ def main():
 
         # Now you can run the annotation logic
         if all_shapes:
-            upload_annotations_with_retry(task, all_shapes)
+            task.update_annotations(models.PatchedLabeledDataRequest(shapes=all_shapes))
+            print(f"Uploaded {len(all_shapes)} total shapes across {len(image_files)} jobs.")
 
 
 if __name__ == '__main__':
