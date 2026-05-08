@@ -60,14 +60,10 @@ def create_task_from_directory():
         )
         task = client.tasks.create(task_spec)
         print(f'Created Task ID: {task.id}. Uploading {len(image_paths)} images...')
-        task.upload_data(
-            image_paths,
-            quality='original', # Keeps the image compressed as-is, no re-encoding
-            use_zip_chunks=True, # Efficient for large batches
-            chunk_size=1,
-        )
+        task.upload_data(image_paths)
 
         print("Waiting for server to process images and create jobs...")
+        time.sleep(2)
         max_retries = 30
         for i in range(max_retries):
             # Refresh the task object from the server
@@ -98,10 +94,11 @@ def create_task_from_directory():
 
             # Rename the job to the filename
             # We use partial_update to change the name
-            client.jobs.partial_update(
-                current_job_id,
-                models.PatchedJobWriteRequest(name=f"Job: {original_filename}")
-            )
+            job.update(models.JobWriteRequest(
+                name=f"Job: {original_filename}",
+                stage=job.stage,
+                state=job.state
+            ))
 
 
         # Prepare and upload annotations for all frames
