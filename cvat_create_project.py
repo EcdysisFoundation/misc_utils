@@ -61,38 +61,38 @@ def create_task_from_directory():
         print(f'Created Task ID: {task.id}. Uploading {len(image_paths)} images...')
         task.upload_data(image_paths)
 
-        # 4. Prepare and upload annotations for all frames
+        # Prepare and upload annotations for all frames
         all_shapes = []
         for idx, filename in enumerate(image_files):
             label_file = os.path.splitext(filename)[0] + ".txt"
             label_path = os.path.join(DATA_DIR, label_file)
 
-        if os.path.exists(label_path):
-            with Image.open(os.path.join(DATA_DIR, filename)) as img:
-                w, h = img.size
+            if os.path.exists(label_path):
+                with Image.open(os.path.join(DATA_DIR, filename)) as img:
+                    w, h = img.size
 
-        with open(label_path, 'r') as f:
-            for line in f:
-                parts = line.strip().split()
-                if not parts: continue
+            with open(label_path, 'r') as f:
+                for line in f:
+                    parts = line.strip().split()
+                    if not parts: continue
 
-                class_id = int(parts[0])
-                coords = [float(x) for x in parts[1:]]
+                    class_id = int(parts[0])
+                    coords = [float(x) for x in parts[1:]]
 
-                # De-normalize coordinates
-                pixel_coords = []
-                for i in range(0, len(coords), 2):
-                    pixel_coords.append(coords[i] * w)     # x
-                    pixel_coords.append(coords[i+1] * h)   # y
+                    # De-normalize coordinates
+                    pixel_coords = []
+                    for i in range(0, len(coords), 2):
+                        pixel_coords.append(coords[i] * w)     # x
+                        pixel_coords.append(coords[i+1] * h)   # y
 
-                all_shapes.append(models.LabeledShapeRequest(
-                    frame=idx, # Assign to the correct frame index
-                    label_id=label_name_to_id[LABEL_MAP[class_id]],
-                    type="polygon",
-                    points=pixel_coords,
-                    occluded=False,
-                    attributes=[],
-                ))
+                    all_shapes.append(models.LabeledShapeRequest(
+                        frame=idx, # Assign to the correct frame index
+                        label_id=label_name_to_id[LABEL_MAP[class_id]],
+                        type="polygon",
+                        points=pixel_coords,
+                        occluded=False,
+                        attributes=[],
+                    ))
 
         if all_shapes:
             task.update_annotations(models.PatchedLabeledDataRequest(shapes=all_shapes))
