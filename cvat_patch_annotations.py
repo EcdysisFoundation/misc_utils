@@ -95,7 +95,7 @@ def main():
                         pixel_coords.append(coords[i] * w)     # x
                         pixel_coords.append(coords[i+1] * h)   # y
 
-                    all_shapes.append(models.LabeledShapeRequest(
+                    shape = (models.LabeledShapeRequest(
                         frame=idx, # Assign to the correct frame index
                         label_id=label_name_to_id[LABEL_MAP[class_id]],
                         type="polygon",
@@ -103,11 +103,14 @@ def main():
                         occluded=False,
                         attributes=[],
                     ))
+                    task.update_annotations(models.PatchedLabeledDataRequest(shapes=[shape]))
+                    print(f"Uploaded label for {idx}.")
+                    #all_shapes.append(shape)
 
         # Now you can run the annotation logic
-        if all_shapes:
-            task.update_annotations(models.PatchedLabeledDataRequest(shapes=all_shapes))
-            print(f"Uploaded {len(all_shapes)} total shapes across {len(image_files)} jobs.")
+        #if all_shapes:
+        #    task.update_annotations(models.PatchedLabeledDataRequest(shapes=all_shapes))
+        #    print(f"Uploaded {len(all_shapes)} total shapes across {len(image_files)} jobs.")
 
 
 if __name__ == '__main__':
