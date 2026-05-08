@@ -16,9 +16,9 @@ from stitcher_api import post_sent_ls
 # and resized images get created and added to TASK_DIR
 ##############################################################
 
-TASK_DIR = '71_KS_NE_2025'
+TASK_DIR = 'sdk_test'
 
-PROJECT_NAME = "2025 Clusters"
+PROJECT_NAME = "Test Project"
 
 BASE_DIR = '/pool1/srv/cvat-tasks/'
 DATA_DIR = f'{BASE_DIR}{TASK_DIR}'
