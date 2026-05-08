@@ -8,11 +8,11 @@ from config_secrets import CVAT_APIKEY
 from stitcher_api import post_sent_ls
 
 ##############################################################
-### Create a cvat.ai project and populate from outputs of our
-### ultralytics repo inference module
-### TODO: make PROJECT_NAME and TASK_DIR the same in future
-###       in order to only need the cvat id or name,
-###       but make it filename safe
+# Create a cvat.ai project and populate from outputs of our
+# ultralytics repo inference module
+# where inference creates a TASK_DIR with .txt,
+# YOLO predictions on high res images
+# and resized images get created and added to TASK_DIR
 ##############################################################
 
 TASK_DIR = 'sdk_test'
@@ -47,59 +47,59 @@ def create_task_from_directory():
         # Map the labels, get the images
         cvat_labels = project.get_labels()
         label_name_to_id = {l.name: l.id for l in cvat_labels}
-        image_files = sorted([f for f in os.listdir(DATA_DIR) if f.endswith(('.jpg', '.png', '.jpeg'))])
+        image_files = sorted([f for f in os.listdir(DATA_DIR) if f.lower().endswith(('.jpg', '.png', '.jpeg'))])
+        image_paths = [os.path.join(DATA_DIR, f) for f in image_files]
 
-        for filename in image_files:
-            print(f'creating task for {filename}...')
-            image_path = os.path.join(DATA_DIR, filename)
+        # Create one Task for all images
+        # segment_size=1 creates one job per image
+        task_spec = models.TaskWriteRequest(
+            name=TASK_DIR,
+            project_id=project.id,
+            segment_size=1
+        )
+        task = client.tasks.create(task_spec)
+        print(f'Created Task ID: {task.id}. Uploading {len(image_paths)} images...')
+        task.upload_data(image_paths)
+
+        # 4. Prepare and upload annotations for all frames
+        all_shapes = []
+        for idx, filename in enumerate(image_files):
             label_file = os.path.splitext(filename)[0] + ".txt"
             label_path = os.path.join(DATA_DIR, label_file)
 
-            #TODO: add check if task with this filename already exists. What we do then?
+        if os.path.exists(label_path):
+            with Image.open(os.path.join(DATA_DIR, filename)) as img:
+                w, h = img.size
 
-            # Create the Task
-            task_spec = models.TaskWriteRequest(
-                name=f'{filename}',
-                project_id=project.id,
-            )
-            task = client.tasks.create(task_spec)
-            print(f'Created task ID: {task.id}, uploading {image_path}')
+        with open(label_path, 'r') as f:
+            for line in f:
+                parts = line.strip().split()
+                if not parts: continue
 
-            task.upload_data([image_path])
+                class_id = int(parts[0])
+                coords = [float(x) for x in parts[1:]]
 
-            if os.path.exists(label_path):
-                # Get image dimensions for de-normalization
-                with Image.open(os.path.join(DATA_DIR, filename)) as img:
-                    w, h = img.size
+                # De-normalize coordinates
+                pixel_coords = []
+                for i in range(0, len(coords), 2):
+                    pixel_coords.append(coords[i] * w)     # x
+                    pixel_coords.append(coords[i+1] * h)   # y
 
-            shapes = []
-            with open(label_path, 'r') as f:
-                for line in f:
-                    parts = line.strip().split()
-                    if not parts: continue
+                all_shapes.append(models.LabeledShapeRequest(
+                    frame=idx, # Assign to the correct frame index
+                    label_id=label_name_to_id[LABEL_MAP[class_id]],
+                    type="polygon",
+                    points=pixel_coords,
+                    occluded=False,
+                    attributes=[],
+                ))
 
-                    class_id = int(parts[0])
-                    pixel_coords = []
-                    coords = [float(x) for x in parts[1:]]
+        if all_shapes:
+            task.update_annotations(models.PatchedLabeledDataRequest(shapes=all_shapes))
+            print(f"Uploaded {len(all_shapes)} total shapes across {len(image_files)} jobs.")
 
-                    for i in range(0, len(coords), 2):
-                        pixel_coords.append(coords[i] * w)     # x
-                        pixel_coords.append(coords[i+1] * h)   # y
 
-                    # Create the CVAT Shape object
-                    shapes.append(models.LabeledShapeRequest(
-                        frame=0,
-                        label_id=label_name_to_id[LABEL_MAP[class_id]],
-                        type="polygon",
-                        points=pixel_coords,
-                        occluded=False,
-                        attributes=[],
-                    ))
-
-            if shapes:
-                task.update_annotations(models.PatchedLabeledDataRequest(shapes=shapes))
-
-    print(f"\nSuccessfully created {len(image_files)} tasks in project '{PROJECT_NAME}'.")
+    print(f"\nSuccessfully uploaded {len(image_files)} to task: {TASK_DIR}.")
     return [(extract_guid(i), os.path.splitext(i)[0] + ".txt") for i in image_files]
 
 
