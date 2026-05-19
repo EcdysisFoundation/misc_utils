@@ -1,5 +1,6 @@
 
 import os
+import time
 from PIL import Image
 from cvat_sdk import make_client, models
 
@@ -17,7 +18,7 @@ from stitcher_api import post_sent_ls
 
 TASK_DIR = 'sdk_test'
 
-PROJECT_NAME = "SDK Test Project"
+PROJECT_NAME = "Test Project"
 
 BASE_DIR = '/pool1/srv/cvat-tasks/'
 DATA_DIR = f'{BASE_DIR}{TASK_DIR}'
@@ -61,7 +62,47 @@ def create_task_from_directory():
         print(f'Created Task ID: {task.id}. Uploading {len(image_paths)} images...')
         task.upload_data(image_paths)
 
+        print("Waiting for server to process images and create jobs...")
+        time.sleep(2)
+        max_retries = 30
+        for i in range(max_retries):
+            # Refresh the task object from the server
+            task.fetch()
+
+            # Check if the jobs are generated
+            jobs = task.get_jobs()
+            if len(jobs) == len(image_files):
+                print(f"Server ready! All {len(jobs)} jobs created.")
+                break
+
+            print(f"Attempt {i+1}: Jobs not ready yet. Retrying in 5s...")
+            time.sleep(5)
+        else:
+            raise TimeoutError("CVAT took too long to create jobs. Check server logs.")
+
+        jobs = task.get_jobs()
+        print(f"Task created with {len(jobs)} jobs.")
+
+        # Map jobs to your filenames and rename them
+        for idx, job in enumerate(jobs):
+            # Retrieve the filename that corresponds to this job's frame
+            original_filename = image_files[idx]
+
+            # Get the Job ID
+            current_job_id = job.id
+            print(f"Job {idx} has ID: {current_job_id} (assigned to {original_filename})")
+
+            # Rename the job to the filename
+            # We use partial_update to change the name
+            job.update(models.JobWriteRequest(
+                name=f"Job: {original_filename}",
+                stage=job.stage,
+                state=job.state
+            ))
+
+
         # Prepare and upload annotations for all frames
+        time.sleep(2)
         all_shapes = []
         for idx, filename in enumerate(image_files):
             label_file = os.path.splitext(filename)[0] + ".txt"

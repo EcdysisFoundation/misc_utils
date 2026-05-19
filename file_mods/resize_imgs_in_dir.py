@@ -2,7 +2,7 @@ import argparse
 import os
 from pathlib import Path
 
-from ..gen_utils import load_resize_and_save_thumbnail
+from misc_utils.gen_utils import load_resize_and_save_thumbnail
 
 
 def get_args() -> argparse.Namespace:
