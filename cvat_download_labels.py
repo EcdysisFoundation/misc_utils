@@ -330,10 +330,22 @@ def main(args):
             print(f'localsave is the only current save setting for source {ARGS_TASKS}')
 
     elif args.source == ARGS_JOBS:
+        if not args.task_name:
+            print(f'--task-name is required when --source is {ARGS_JOBS}')
+            return
+        if not args.project_name:
+            print(f'--project-name is required when --source is {ARGS_JOBS}')
+            return
         guids = []
-        data_dir_task = f'{BASE_DIR_TASKS}{args.task_dir}'
+        if args.task_dir:
+            data_dir_task = f'{BASE_DIR_TASKS}{args.task_dir}'
+        else:
+            data_dir_task = f'{BASE_DIR_TASKS}{args.task_name}'
         print(f'the data_dir_task is {data_dir_task}')
         job_ids = get_filtered_job_ids(args)
+        if not job_ids:
+            print('Found no jobs, exiting..')
+            return
         print(f'Found {len(job_ids)} job ids')
         download_dirs = set()
         for job_id in job_ids:
