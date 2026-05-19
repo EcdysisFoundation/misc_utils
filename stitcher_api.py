@@ -65,6 +65,7 @@ def simple_post_w_params(api_post_url, post_params):
         else:
             print('Response returned None')
     except Exception as e:
+        print(f'error with post_params {post_params}')
         print(e)
 
 

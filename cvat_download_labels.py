@@ -350,6 +350,13 @@ def main(args):
                 extracted_files = extract_and_cleanup_labels(task_zip_path, dir)
                 guids += extracted_files
         print(f'Extracted labels for {len(guids)} guids')
+        print('Notifying stitcher of these guids')
+        for guid in guids:
+            post_params = {
+                'guid': guid
+            }
+            # BASE_DIR_TASKS is tied to Stitcher app, must notify
+            updated_label_post(post_params)
 
     print('COMPLETED DOWNLOAD AND UPDATE PROCESS')
 
@@ -357,5 +364,3 @@ def main(args):
 if __name__ == '__main__':
     args = get_args()
     main(args)
-
-
