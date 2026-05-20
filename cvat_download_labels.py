@@ -218,12 +218,11 @@ def download_by_job_ids(job_ids, download_path):
     Downloads job images by id to central directory.
     """
     retrieved_job_count = 0
-    with make_client(CVAT_URL, access_token=CVAT_APIKEY) as client:
-        client.organization = ORGANIZATION_SLUG
+    with ApiClient(CONFIGURATION) as api_client:
         print(f'Downloading {len(job_ids)} jobs, this may take some time...')
         for job_id in job_ids:
             try:
-                (data, response) = client.jobs_api.create_dataset_export(
+                (data, response) = api_client.jobs_api.create_dataset_export(
                     EXPORT_FORMAT,
                     job_id,
                     filename=f"{download_path}/job_{job_id}_labels.zip"
