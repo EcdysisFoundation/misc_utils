@@ -17,9 +17,10 @@ from stitcher_api import updated_label_post
 #
 # Standard use is to use options...
 # if by jobs
-# python -m cvat_download_labels --source jobs --project-name '2025 Clusters' --task-name 71_KS_NE_2025 --task-dir 71_KS_NE_2025_test
+# python -m cvat_download_labels --source jobs --project-name 'my_project' --task-name 'my_task_name'
 # --stage and --state used and set with defaults
 # --task-dir optionally overrides --task-name as the cvat-tasks directory name
+# --skip-stitcher-notify optionally skips notifying stitcher api
 #
 # if by task, we are using this for evaluation testing
 # --source task
@@ -65,6 +66,11 @@ def get_args() -> argparse.Namespace:
         '--localsave',
         action='store_true',
         help="Enables saving to local_download_path"
+    )
+    parser.add_argument(
+        '--skip-stitcher-notify',
+        action='store_true',
+        help="Skips notifing stitcher of new download"
     )
     parser.add_argument(
         '--status',
@@ -359,13 +365,14 @@ def main(args):
             extracted_files = extract_and_cleanup_labels(task_zip_path, populated_download_dir)
             guids += extracted_files
         print(f'Extracted labels for {len(guids)} guids')
-        print('Notifying stitcher of these guids')
-        for guid in guids:
-            post_params = {
-                'guid': guid
-            }
-            # BASE_DIR_TASKS is tied to Stitcher app, must notify
-            updated_label_post(post_params)
+        if not args.skip_stitcher_notify:
+            print('Notifying stitcher of these guids')
+            for guid in guids:
+                post_params = {
+                    'guid': guid
+                }
+                # BASE_DIR_TASKS is tied to Stitcher app, must notify
+                updated_label_post(post_params)
 
     print('COMPLETED DOWNLOAD AND UPDATE PROCESS')
 
