@@ -227,7 +227,8 @@ def notify_stitcher(args, task_id):
                 'project': args.project_name,
                 'label_project_dir': args.task_name,
                 'label_file': label_file,
-                'label_job_id': target_job.id
+                'label_job_id': target_job.id,
+                'label_task_id': task_id
             }
             post_sent_ls(post_params)
 
