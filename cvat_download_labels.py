@@ -2,6 +2,7 @@ import argparse
 import os
 import zipfile
 import shutil
+from pathlib import Path
 
 from cvat_sdk import make_client
 from cvat_sdk.api_client import Configuration, ApiClient, exceptions
@@ -16,9 +17,9 @@ from stitcher_api import updated_label_post
 #
 # Standard use is to use options...
 # if by jobs
-# python -m cvat_download_labels --source jobs --project-name 'myproject' --task-name 'mytask'
+# python -m cvat_download_labels --source jobs --project-name '2025 Clusters' --task-name 71_KS_NE_2025 --task-dir 71_KS_NE_2025_test
 # --stage and --state used and set with defaults
-# --task_dir optionally overrides --task-name as the cvat-tasks directory name
+# --task-dir optionally overrides --task-name as the cvat-tasks directory name
 #
 # if by task, we are using this for evaluation testing
 # --source task
@@ -338,12 +339,14 @@ def main(args):
             data_dir_task = f'{BASE_DIR_TASKS}{args.task_dir}'
         else:
             data_dir_task = f'{BASE_DIR_TASKS}{args.task_name}'
-        print(f'the data_dir_task is {data_dir_task}')
+        print(f'the data_dir_task is {data_dir_task}. Files will be saved here.')
         job_ids = get_filtered_job_ids(args)
         if not job_ids:
             print('Found no jobs, exiting..')
             return
         print(f'Found {len(job_ids)} job ids')
+        print(f'Ensuring {data_dir_task} exists, will create if not.')
+        Path(data_dir_task).mkdir(parents=True, exist_ok=True)
         populated_download_dir = download_by_job_ids(job_ids, data_dir_task)
         if not populated_download_dir:
             print('There was no populated_download_dir, exiting..')
