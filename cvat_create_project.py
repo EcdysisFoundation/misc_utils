@@ -43,7 +43,7 @@ def get_args() -> argparse.Namespace:
 
 
 def get_image_files(data_dir):
-    sorted([f for f in os.listdir(data_dir) if f.lower().endswith(('.jpg', '.png', '.jpeg'))])
+    return sorted([f for f in os.listdir(data_dir) if f.lower().endswith(('.jpg', '.png', '.jpeg'))])
 
 
 def get_data_dir(args):
@@ -53,6 +53,7 @@ def get_data_dir(args):
 def create_task_from_directory(args):
     # Create a Client instance bound to a local server and authenticate using basic auth
     data_dir = get_data_dir(args)
+    print(f'Data directory is {data_dir}')
     with make_client(CVAT_CLIENT_URL, access_token=CVAT_APIKEY) as client:
         client.organization_slug = ORGANIZATION_SLUG
 
@@ -96,8 +97,7 @@ def create_task_from_directory(args):
 
             print(f"Created temporary zip ({os.path.getsize(tmp_zip_path) // 1024**2} MB). Uploading...")
 
-            # 4. Upload the ZIP
-            # We pass the path as a list containing the single zip file
+            # Upload the ZIP
             task.upload_data([tmp_zip_path])
 
         # Clean up the temp file
@@ -128,13 +128,17 @@ def create_task_from_directory(args):
 def patch_annotations(args):
     data_dir = get_data_dir(args)
     with make_client(CVAT_CLIENT_URL, access_token=CVAT_APIKEY) as client:
+
         print(f"Searching for project: '{args.project_name}'...")
-        project_matches = client.projects.list(search=args.project_name)
-        # 'search' does a partial match, so look for the exact name match
-        project = next((p for p in project_matches if p.name == args.project_name), None)
+        project = None
+        existing_projects = client.projects.list()
+        if existing_projects:
+            projects = [v.name for v in existing_projects]
+            if args.project_name in projects:
+                project = existing_projects[projects.index(args.project_name)]
+                print(f"Using existing project: {project.name} (ID: {project.id})")
         if not project:
             raise ValueError(f"Project '{args.project_name}' not found.")
-        print(f"Found Project! ID: {project.id}")
 
         # Find the task inside that specific project using the task name, we use the TASK_DIR
         print(f"Searching for task: '{args.task_dir}' within project...")
@@ -235,8 +239,8 @@ def notify_stitcher(args, task_id):
 
 if __name__ == '__main__':
     args = get_args()
-    sent_guids = create_task_from_directory(args)
+    task_created = create_task_from_directory(args)
 
-    if sent_guids:
+    if task_created:
         task_id = patch_annotations(args)
         notify_stitcher(args, task_id)
