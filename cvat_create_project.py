@@ -6,6 +6,7 @@ import os
 import time
 from PIL import Image
 from cvat_sdk import make_client, models
+from cvat_sdk.api_client import Configuration, ApiClient
 
 from gen_utils import extract_guid
 from config_secrets import CVAT_APIKEY
@@ -24,6 +25,10 @@ BASE_DIR = '/pool1/srv/cvat-tasks/'
 LABEL_MAP = {0: 'Arthropod'}
 ORGANIZATION_SLUG = 'Ecdysis'
 CVAT_CLIENT_URL = 'https://app.cvat.ai/'
+CONFIGURATION = Configuration(
+    host=CVAT_CLIENT_URL,
+    access_token=CVAT_APIKEY
+)
 
 
 def get_args() -> argparse.Namespace:
@@ -125,6 +130,32 @@ def create_task_from_directory(args):
     return True
 
 
+def search_tasks_by_project(project_id, task_name):
+    """
+    Returns one task id filtered by criteria, or None.
+    """
+    # see client filters https://docs.cvat.ai/docs/api_sdk/sdk/reference/apis/tasks-api/#list
+    task_ids = []
+    with ApiClient(CONFIGURATION) as api_client:
+        page = 1
+        while True:
+            (data, _) = api_client.tasks_api.list(
+                x_organization=ORGANIZATION_SLUG,
+                page=page,
+                status=project_id,
+                search=task_name,
+                page_size=100
+            )
+            task_ids += [task.id for task in data['results'] if task.name == task_name]
+            if data['next'] is None:
+                break
+            page += 1
+    if len(task_ids) != 1:
+        print(f'Found {len(task_ids)} task ids which is != 1. Returning None')
+        return None
+    return task_ids[0]
+
+
 def patch_annotations(args):
     data_dir = get_data_dir(args)
     with make_client(CVAT_CLIENT_URL, access_token=CVAT_APIKEY) as client:
@@ -142,13 +173,11 @@ def patch_annotations(args):
 
         # Find the task inside that specific project using the task name, we use the TASK_DIR
         print(f"Searching for task: '{args.task_dir}' within project...")
-        task_matches = client.tasks.list(project_id=project.id, search=args.task_dir)
-        # Filter for the exact task name match
-        task = next((t for t in task_matches if t.name == args.task_dir), None)
-        if not task:
+        task_id = search_tasks_by_project(project.id, args.task_dir)
+        if not task_id:
             raise ValueError(f"Task '{args.task_dir}' not found in project '{args.project_name}'.")
-        print(f"Found Task! ID: {task.id}")
-        retrieved_task = client.tasks.retrieve(task.id)
+        print(f"Found Task! ID: {task_id}")
+        retrieved_task = client.tasks.retrieve(task_id)
 
         image_files = get_image_files(data_dir)
         cvat_labels = project.get_labels()
