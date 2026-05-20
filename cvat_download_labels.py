@@ -215,24 +215,23 @@ def download_by_task_id(task_ids, download_path):
 
 def download_by_job_ids(job_ids, download_path):
     """
-    Downloads job images by id to central directory.
+    Downloads job annotations by id to central directory.
     """
     retrieved_job_count = 0
-    with ApiClient(CONFIGURATION) as api_client:
+    with make_client(CVAT_URL, access_token=CVAT_APIKEY) as client:
         print(f'Downloading {len(job_ids)} jobs, this may take some time...')
         for job_id in job_ids:
             try:
-                (data, response) = api_client.jobs_api.create_dataset_export(
-                    EXPORT_FORMAT,
-                    job_id,
-                    filename=f"{download_path}/job_{job_id}_labels.zip"
+                job = client.jobs.retrieve(job_id)
+                local_zip_path = f"{download_path}/job_{job_id}_labels.zip"
+                job.export_dataset(
+                    format_name=EXPORT_FORMAT,
+                    filename=local_zip_path
                 )
                 retrieved_job_count += 1
-            except ApiException as e:
-                if e.status == 404:
-                    print(f"Warning: Task {job_id} no longer exists. Skipping...")
-                else:
-                    print(f"Error retrieving Task. Skipping {job_id}: {e}")
+                print(f"Successfully downloaded Job {job_id} to {local_zip_path}")
+            except Exception as e:
+                print(f"Error retrieving Job {job_id}: {e}")
     if retrieved_job_count:
         print(f'Downloaded {retrieved_job_count} records to {download_path}')
         return download_path
