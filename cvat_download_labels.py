@@ -16,17 +16,14 @@ from stitcher_api import updated_label_post
 #
 # Standard use is to use options...
 # if by jobs
-# --source jobs
-# --project-name 'myproject'
-# --task-name 'mytask'
-#
-# # --stage and # --state used and set with defaults
+# python -m cvat_download_labels --source jobs --project-name 'myproject' --task-name 'mytask'
+# --stage and --state used and set with defaults
+# --task_dir optionally overrides --task-name as the cvat-tasks directory name
 #
 # if by task, we are using this for evaluation testing
 # --source task
 # --task-name 'mytask'
-# --localsave # this option is used for evaluation testing
-# --task-dir 'mydir' # the dir at BASE_DIR_TASKS where the download will replace files. Not used use with --localsave
+# --localsave # saves the files locally, not related to stitcher
 #
 # if by project, we download all files in the project irregardless if marked as completed.
 # --source project
@@ -209,7 +206,7 @@ def download_by_task_id(task_ids, download_path):
     return None
 
 
-def download_by_job_id(job_ids, download_path):
+def download_by_job_ids(job_ids, download_path):
     """
     Downloads job images by id to central directory.
     """
@@ -251,7 +248,7 @@ def get_filtered_job_ids(args):
         print('get_filtered_job_ids requires option --project-name, returning None')
         return
     if not args.task_name:
-        print('get_filtered_job_ids requires option --task-name when organizing images per task instead of per project.')
+        print('get_filtered_job_ids requires option --task-name.')
         return
     with ApiClient(CONFIGURATION) as api_client:
         job_ids = []
@@ -347,20 +344,17 @@ def main(args):
             print('Found no jobs, exiting..')
             return
         print(f'Found {len(job_ids)} job ids')
-        download_dirs = set()
-        for job_id in job_ids:
-            print(f'downloading {job_id}')
-            populated_download_dir = download_by_job_id(job_id, data_dir_task)
-            if populated_download_dir:
-                download_dirs.add(populated_download_dir)
-        print(f'Finished downloading jobs, into directories {download_dirs}')
-        for dir in download_dirs:
-            print(f'Getting zip files from {dir}')
-            zip_paths = get_zip_file_paths(dir)
-            print(f'Extracting {len(zip_paths)} zip_paths')
-            for task_zip_path in zip_paths:
-                extracted_files = extract_and_cleanup_labels(task_zip_path, dir)
-                guids += extracted_files
+        populated_download_dir = download_by_job_ids(job_ids, data_dir_task)
+        if not populated_download_dir:
+            print('There was no populated_download_dir, exiting..')
+            return
+        print(f'Finished downloading jobs, into {populated_download_dir}')
+        print(f'Getting zip files from {populated_download_dir}')
+        zip_paths = get_zip_file_paths(populated_download_dir)
+        print(f'Extracting {len(zip_paths)} zip_paths')
+        for task_zip_path in zip_paths:
+            extracted_files = extract_and_cleanup_labels(task_zip_path, populated_download_dir)
+            guids += extracted_files
         print(f'Extracted labels for {len(guids)} guids')
         print('Notifying stitcher of these guids')
         for guid in guids:
