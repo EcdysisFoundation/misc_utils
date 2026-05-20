@@ -1,4 +1,7 @@
 
+import argparse
+import zipfile
+import tempfile
 import os
 import time
 from PIL import Image
@@ -16,18 +19,41 @@ from stitcher_api import post_sent_ls
 # and resized images get created and added to TASK_DIR
 ##############################################################
 
-TASK_DIR = 'sdk_test'
-
-PROJECT_NAME = "Test Project"
 
 BASE_DIR = '/pool1/srv/cvat-tasks/'
-DATA_DIR = f'{BASE_DIR}{TASK_DIR}'
 LABEL_MAP = {0: 'Arthropod'}
 ORGANIZATION_SLUG = 'Ecdysis'
+CVAT_CLIENT_URL = 'https://app.cvat.ai/'
 
-def create_task_from_directory():
+
+def get_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description='Download cvat.ai labels')
+    parser.add_argument(
+        '--task-dir',
+        required=True,
+        help="The cvat.ai task name and the directory at BASE_DIR"
+    )
+    parser.add_argument(
+        '--project-name',
+        required=True,
+        help="The project-name and cvat.ai"
+    )
+    args = parser.parse_args()
+    return args
+
+
+def get_image_files(data_dir):
+    sorted([f for f in os.listdir(data_dir) if f.lower().endswith(('.jpg', '.png', '.jpeg'))])
+
+
+def get_data_dir(args):
+    return f'{BASE_DIR}{args.task_dir}'
+
+
+def create_task_from_directory(args):
     # Create a Client instance bound to a local server and authenticate using basic auth
-    with make_client('https://app.cvat.ai/', access_token=CVAT_APIKEY) as client:
+    data_dir = get_data_dir(args)
+    with make_client(CVAT_CLIENT_URL, access_token=CVAT_APIKEY) as client:
         client.organization_slug = ORGANIZATION_SLUG
 
         # Get or set project
@@ -35,36 +61,52 @@ def create_task_from_directory():
         existing_projects = client.projects.list()
         if existing_projects:
             projects = [v.name for v in existing_projects]
-            if PROJECT_NAME in projects:
-                project = existing_projects[projects.index(PROJECT_NAME)]
+            if args.project_name in projects:
+                project = existing_projects[projects.index(args.project_name)]
                 print(f"Using existing project: {project.name} (ID: {project.id})")
         if not project:
             # Define labels at the Project level
             labels = [{"name": name} for name in LABEL_MAP.values()]
-            project_spec = models.ProjectWriteRequest(name=PROJECT_NAME, labels=labels)
+            project_spec = models.ProjectWriteRequest(name=args.project_name, labels=labels)
             project = client.projects.create(project_spec)
             print(f"Created new project: {project.name}")
 
-        # Map the labels, get the images
-        cvat_labels = project.get_labels()
-        label_name_to_id = {l.name: l.id for l in cvat_labels}
-        image_files = sorted([f for f in os.listdir(DATA_DIR) if f.lower().endswith(('.jpg', '.png', '.jpeg'))])
-        image_paths = [os.path.join(DATA_DIR, f) for f in image_files]
+        # get the images
+        image_files = get_image_files(data_dir)
+        image_paths = [os.path.join(data_dir, f) for f in image_files]
 
         # Create one Task for all images
         # segment_size=1 creates one job per image
         task_spec = models.TaskWriteRequest(
-            name=TASK_DIR,
+            name=args.task_dir,
             project_id=project.id,
             segment_size=1
         )
         task = client.tasks.create(task_spec)
         print(f'Created Task ID: {task.id}. Uploading {len(image_paths)} images...')
-        task.upload_data(image_paths)
+
+        # Create a temporary ZIP file
+        with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp_zip:
+            tmp_zip_path = tmp_zip.name
+            with zipfile.ZipFile(tmp_zip_path, 'w') as zf:
+                for filename in image_files:
+                    full_path = os.path.join(data_dir, filename)
+                    # We add the file to the zip. Frame order follows 'image_files' order.
+                    zf.write(full_path, arcname=filename)
+
+            print(f"Created temporary zip ({os.path.getsize(tmp_zip_path) // 1024**2} MB). Uploading...")
+
+            # 4. Upload the ZIP
+            # We pass the path as a list containing the single zip file
+            task.upload_data([tmp_zip_path])
+
+        # Clean up the temp file
+        if os.path.exists(tmp_zip_path):
+            os.remove(tmp_zip_path)
 
         print("Waiting for server to process images and create jobs...")
         time.sleep(2)
-        max_retries = 30
+        max_retries = 300
         for i in range(max_retries):
             # Refresh the task object from the server
             task.fetch()
@@ -75,82 +117,125 @@ def create_task_from_directory():
                 print(f"Server ready! All {len(jobs)} jobs created.")
                 break
 
-            print(f"Attempt {i+1}: Jobs not ready yet. Retrying in 5s...")
-            time.sleep(5)
+            print(f"Attempt {i+1}: Jobs not ready yet. Retrying in 10s...")
+            time.sleep(10)
         else:
             raise TimeoutError("CVAT took too long to create jobs. Check server logs.")
 
-        jobs = task.get_jobs()
-        print(f"Task created with {len(jobs)} jobs.")
-
-        # Map jobs to your filenames and rename them
-        for idx, job in enumerate(jobs):
-            # Retrieve the filename that corresponds to this job's frame
-            original_filename = image_files[idx]
-
-            # Get the Job ID
-            current_job_id = job.id
-            print(f"Job {idx} has ID: {current_job_id} (assigned to {original_filename})")
-
-            # Rename the job to the filename
-            # We use partial_update to change the name
-            job.update(models.JobWriteRequest(
-                name=f"Job: {original_filename}",
-                stage=job.stage,
-                state=job.state
-            ))
+    return True
 
 
-        # Prepare and upload annotations for all frames
-        time.sleep(2)
-        all_shapes = []
+def patch_annotations(args):
+    data_dir = get_data_dir(args)
+    with make_client(CVAT_CLIENT_URL, access_token=CVAT_APIKEY) as client:
+        print(f"Searching for project: '{args.project_name}'...")
+        project_matches = client.projects.list(search=args.project_name)
+        # 'search' does a partial match, so look for the exact name match
+        project = next((p for p in project_matches if p.name == args.project_name), None)
+        if not project:
+            raise ValueError(f"Project '{args.project_name}' not found.")
+        print(f"Found Project! ID: {project.id}")
+
+        # Find the task inside that specific project using the task name, we use the TASK_DIR
+        print(f"Searching for task: '{args.task_dir}' within project...")
+        task_matches = client.tasks.list(project_id=project.id, search=args.task_dir)
+        # Filter for the exact task name match
+        task = next((t for t in task_matches if t.name == args.task_dir), None)
+        if not task:
+            raise ValueError(f"Task '{args.task_dir}' not found in project '{args.project_name}'.")
+        print(f"Found Task! ID: {task.id}")
+        retrieved_task = client.tasks.retrieve(task.id)
+
+        image_files = get_image_files(data_dir)
+        cvat_labels = project.get_labels()
+        label_name_to_id = {v.name: v.id for v in cvat_labels}
+
         for idx, filename in enumerate(image_files):
             label_file = os.path.splitext(filename)[0] + ".txt"
-            label_path = os.path.join(DATA_DIR, label_file)
+            label_path = os.path.join(data_dir, label_file)
 
-            if os.path.exists(label_path):
-                with Image.open(os.path.join(DATA_DIR, filename)) as img:
-                    w, h = img.size
+            if not os.path.exists(label_path):
+                print(f'WARNING: Not Found: {label_path} continuing...')
+                continue
+            with Image.open(os.path.join(data_dir, filename)) as img:
+                w, h = img.size
 
             with open(label_path, 'r') as f:
                 for line in f:
                     parts = line.strip().split()
-                    if not parts: continue
+                    if not parts:
+                        continue
 
                     class_id = int(parts[0])
                     coords = [float(x) for x in parts[1:]]
-
                     # De-normalize coordinates
                     pixel_coords = []
                     for i in range(0, len(coords), 2):
                         pixel_coords.append(coords[i] * w)     # x
                         pixel_coords.append(coords[i+1] * h)   # y
 
-                    all_shapes.append(models.LabeledShapeRequest(
-                        frame=idx, # Assign to the correct frame index
+                    shape = (models.LabeledShapeRequest(
+                        frame=idx,  # Assign to the correct frame index
                         label_id=label_name_to_id[LABEL_MAP[class_id]],
                         type="polygon",
                         points=pixel_coords,
                         occluded=False,
                         attributes=[],
                     ))
+                    retrieved_task.update_annotations(models.PatchedLabeledDataRequest(shapes=[shape]))
+                    print(f"Uploaded label for {idx}.")
+        return task.id
 
-        if all_shapes:
-            task.update_annotations(models.PatchedLabeledDataRequest(shapes=all_shapes))
-            print(f"Uploaded {len(all_shapes)} total shapes across {len(image_files)} jobs.")
 
+def notify_stitcher(args, task_id):
+    img_files = get_image_files()
+    with make_client(CVAT_CLIENT_URL, access_token=CVAT_APIKEY) as client:
+        task = client.tasks.retrieve(task_id)
+        meta = task.get_meta()
+        jobs = client.jobs.list(task_id=task.id)
 
-    print(f"\nSuccessfully uploaded {len(image_files)} to task: {TASK_DIR}.")
-    return [(extract_guid(i), os.path.splitext(i)[0] + ".txt") for i in image_files]
+        for img in img_files:
+            frame_id = None
+            for idx, frame_meta in enumerate(meta.frames):
+                if frame_meta.name == img:
+                    frame_id = idx
+                    break
+
+            if frame_id is None:
+                print(f"WARNING: Image '{img}' not found in task {task_id}. Continuing...")
+                continue
+
+            print(f"Found image! Frame ID maps to: {frame_id}")
+
+            target_job = None
+            for job in jobs:
+                if job.start_frame <= frame_id <= job.stop_frame:
+                    target_job = job
+                    break
+
+            if not target_job:
+                print(f"WARNING: Could not find an active job enclosing frame {frame_id}. Continuing..")
+                continue
+
+            print(f"The image belongs to Job ID: {target_job.id}")
+
+            print(f"Notifying Stitcher of Job{target_job.id}.")
+            label_file = os.path.splitext(img)[0] + ".txt"
+            guid = extract_guid(img)
+            post_params = {
+                'guid': guid,
+                'project': args.project_name,
+                'label_project_dir': args.task_name,
+                'label_file': label_file,
+                'label_job_id': target_job.id
+            }
+            post_sent_ls(post_params)
 
 
 if __name__ == '__main__':
-    sent_guids = create_task_from_directory()
-    for v in sent_guids:
-        post_params = {
-            'guid': v[0],
-            'project': PROJECT_NAME,
-            'label_project_dir': TASK_DIR,
-            'label_file': v[1]
-        }
-        post_sent_ls(post_params)
+    args = get_args()
+    sent_guids = create_task_from_directory(args)
+
+    if sent_guids:
+        task_id = patch_annotations(args)
+        notify_stitcher(args, task_id)
