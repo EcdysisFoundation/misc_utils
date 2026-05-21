@@ -33,7 +33,6 @@ from stitcher_api import updated_label_post
 # --project-id 0 # the id from cvat.ai project
 # --task-dir 'mydir' # the dir at BASE_DIR_TASKS where the download will replace files
 #
-# Evaulation use is to use options...
 ##############################################################
 
 CVAT_URL = 'https://app.cvat.ai/'
@@ -173,8 +172,7 @@ def get_tasks_by_status(status):
         task_ids = []
         page = 1
         while True:
-            # 1. Fetch only completed tasks for the project
-            (data, response) = api_client.tasks_api.list(
+            (data, _) = api_client.tasks_api.list(
                 x_organization=ORGANIZATION_SLUG,
                 page=page,
                 status=status,
