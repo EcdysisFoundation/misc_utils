@@ -13,11 +13,14 @@ from config_secrets import CVAT_APIKEY
 from stitcher_api import post_sent_ls
 
 ##############################################################
-# Create a cvat.ai project and populate from outputs of our
+# Create a cvat.ai project, or select the one with this name,
+# and populate from outputs of our
 # ultralytics repo inference module
-# where inference creates a TASK_DIR with .txt,
+# where inference creates a TASK_DIR with annotations.txt,
 # YOLO predictions on high res images
 # and resized images get created and added to TASK_DIR
+# Here, we use TASK_DIR as the task name on cvat.ai
+# One job is created per image within the task.
 ##############################################################
 
 
@@ -279,8 +282,8 @@ def notify_stitcher(args, task_id):
             guid = extract_guid(img)
             post_params = {
                 'guid': guid,
-                'project': args.project_name,
-                'label_project_dir': args.task_name,
+                'project': args.task_dir,
+                'label_project_dir': args.task_dir,
                 'label_file': label_file,
                 'label_job_id': target_job.id,
                 'label_task_id': task_id
