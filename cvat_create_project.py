@@ -282,7 +282,7 @@ def notify_stitcher(args, task_id):
             guid = extract_guid(img)
             post_params = {
                 'guid': guid,
-                'project': args.project_name,
+                'project': args.task_dir,
                 'label_project_dir': args.task_dir,
                 'label_file': label_file,
                 'label_job_id': target_job.id,
