@@ -142,7 +142,7 @@ def search_tasks_by_project(project_id, task_name):
             (data, _) = api_client.tasks_api.list(
                 x_organization=ORGANIZATION_SLUG,
                 page=page,
-                status=project_id,
+                project_id=project_id,
                 search=task_name,
                 page_size=100
             )
@@ -217,15 +217,37 @@ def patch_annotations(args):
                     ))
                     retrieved_task.update_annotations(models.PatchedLabeledDataRequest(shapes=[shape]))
                     print(f"Uploaded label for {idx}.")
-        return task.id
+        return task_id
+
+
+def get_task_jobs(task_id):
+    """
+    Returns jobs for a task.
+    """
+    # see client filters https://docs.cvat.ai/docs/api_sdk/sdk/reference/apis/jobs-api/#list
+    jobs = []
+    with ApiClient(CONFIGURATION) as api_client:
+        page = 1
+        while True:
+            (data, _) = api_client.jobs_api.list(
+                x_organization=ORGANIZATION_SLUG,
+                page=page,
+                task_id=task_id,
+                page_size=100
+            )
+            jobs += data['results']
+            if data['next'] is None:
+                break
+            page += 1
+    return jobs
 
 
 def notify_stitcher(args, task_id):
-    img_files = get_image_files()
+    img_files = get_image_files(get_data_dir(args))
     with make_client(CVAT_CLIENT_URL, access_token=CVAT_APIKEY) as client:
         task = client.tasks.retrieve(task_id)
         meta = task.get_meta()
-        jobs = client.jobs.list(task_id=task.id)
+        jobs = get_task_jobs(task.id)
 
         for img in img_files:
             frame_id = None
