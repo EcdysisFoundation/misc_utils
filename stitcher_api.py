@@ -1,11 +1,9 @@
 import requests
-
-
-STITCHER_URL = 'http://ecdysis01.local:8090/'
+from config_secrets import STITCHER_API_URL
 
 
 def get_stitcher_data(upload_dir_name=None):
-    api_list_url = STITCHER_URL + 'list-upload-files/'
+    api_list_url = STITCHER_API_URL + 'list-upload-files/'
     all_data = []
     offset = 0
     limit = 100
@@ -44,7 +42,7 @@ def get_stitcher_data(upload_dir_name=None):
 
 
 def get_abridged_data_by_guid(guid):
-    api_list_url = STITCHER_URL + 'list-upload-abridged/'
+    api_list_url = STITCHER_API_URL + 'list-upload-abridged/'
     try:
         response = requests.get(api_list_url, params={'guid': guid})
         if response:
@@ -70,10 +68,10 @@ def simple_post_w_params(api_post_url, post_params):
 
 
 def post_sent_ls(post_params):
-    api_post_url = STITCHER_URL + '/sent_label_studio/'
+    api_post_url = STITCHER_API_URL + '/sent_label_studio/'
     simple_post_w_params(api_post_url, post_params)
 
 
 def updated_label_post(post_params):
-    api_post_url = STITCHER_URL + '/updated_label/'
+    api_post_url = STITCHER_API_URL + '/updated_label/'
     simple_post_w_params(api_post_url, post_params)
