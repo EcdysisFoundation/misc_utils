@@ -141,8 +141,8 @@ def extract_and_cleanup_labels(zip_path, data_dir_task):
             zip_ref.extractall(temp_extract_dir)
 
         # Walk through extracted files and find .txt files
+        moved_files = set()
         for root, dirs, files in os.walk(temp_extract_dir):
-            moved_files = set()
             for file in files:
                 if file.endswith(".txt") and file.lower() not in ["classes.txt", "train.txt"]:
                     source_path = os.path.join(root, file)
@@ -152,8 +152,8 @@ def extract_and_cleanup_labels(zip_path, data_dir_task):
                     moved_files.add(file.lower())
                     new_file_guids.append(extract_guid(file))
             # check for train.txt images with zero annotations. These dont get a file created.
-            traintxt_path = os.path.join(root, 'train.txt')
-            if os.path.exists(traintxt_path):
+            if 'train.txt' in files:
+                traintxt_path = os.path.join(root, 'train.txt')
                 # check that each image entry has a releated .txt file that exists in 'files'.
                 # If not, create an empty .txt file for it.
                 with open(traintxt_path, 'r', encoding='utf-8') as f:
@@ -174,8 +174,6 @@ def extract_and_cleanup_labels(zip_path, data_dir_task):
                                 pass  # Creates a completely empty text file
 
                             new_file_guids.append(extract_guid(expected_label_file))
-            else:
-                print(f'WARNING: {traintxt_path} not found.')
 
         print(f"Labels successfully moved to: {data_dir_task}")
 
