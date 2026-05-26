@@ -10,6 +10,12 @@ from PIL import Image
 
 from gen_utils import extract_guid
 
+############################################
+#
+# Creates a YOLO Evaluation dataset for use with our Ultralytics SAHI repo
+#
+############################################
+
 
 # These vars vary per test set
 LABEL_DIR = '/pool1/srv/cvat-tasks/sdk_test'
@@ -23,7 +29,7 @@ Image.MAX_IMAGE_PIXELS = None
 
 CLASS_NAMES = {
     0: "Arthropod",
-} # as they appear in YOLO
+}  # as they appear in YOLO
 # shift by one. YOLO starts at 0 but some COCO formats ignore 0
 CLASS_NAMES_COCO = {i + 1: name for i, name in CLASS_NAMES.items()}
 
@@ -39,9 +45,11 @@ def get_image_info(image_path, image_id):
         "height": height
     }
 
+
 def yolo_to_coco_poly(yolo_poly, w, h):
     """Converts normalized YOLO [x, y, x, y...] to pixel-space [x, y, x, y...]"""
     return [coord * w if i % 2 == 0 else coord * h for i, coord in enumerate(yolo_poly)]
+
 
 def convert_to_coco_lite(images_dir, labels_dir, output_json, class_names):
     coco = {
