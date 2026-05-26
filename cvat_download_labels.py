@@ -142,13 +142,40 @@ def extract_and_cleanup_labels(zip_path, data_dir_task):
 
         # Walk through extracted files and find .txt files
         for root, dirs, files in os.walk(temp_extract_dir):
+            moved_files = set()
             for file in files:
                 if file.endswith(".txt") and file.lower() not in ["classes.txt", "train.txt"]:
                     source_path = os.path.join(root, file)
                     destination_path = os.path.join(data_dir_task, file)
                     # Move, overwrite, and keep track
                     shutil.move(source_path, destination_path)
+                    moved_files.add(file.lower())
                     new_file_guids.append(extract_guid(file))
+            # check for train.txt images with zero annotations. These dont get a file created.
+            traintxt_path = os.path.join(root, 'train.txt')
+            if os.path.exists(traintxt_path):
+                # check that each image entry has a releated .txt file that exists in 'files'.
+                # If not, create an empty .txt file for it.
+                with open(traintxt_path, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+
+                        # CVAT paths in train.txt usually look like: data/images/img1.jpg or ./images/img1.jpg
+                        image_filename = os.path.basename(line)
+                        image_stem = os.path.splitext(image_filename)[0]
+                        expected_label_file = f"{image_stem}.txt"
+
+                        # If this image did not have a corresponding moved label file, create an empty one
+                        if expected_label_file.lower() not in moved_files:
+                            empty_label_path = os.path.join(data_dir_task, expected_label_file)
+                            with open(empty_label_path, 'w', encoding='utf-8') as empty_file:
+                                pass  # Creates a completely empty text file
+
+                            new_file_guids.append(extract_guid(expected_label_file))
+            else:
+                print(f'WARNING: {traintxt_path} not found.')
 
         print(f"Labels successfully moved to: {data_dir_task}")
 
