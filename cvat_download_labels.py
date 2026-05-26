@@ -28,7 +28,6 @@ from stitcher_api import updated_label_post
 # --localsave # saves the files locally, not related to stitcher
 #
 # if by project, we download all files in the project irregardless if marked as completed.
-# python -m cvat_download_labels --source project --project-name 'SDK Test Project' --project-id 389494 --task-dir sdk_test
 # --source project
 # --project-name 'myproject'
 # --project-id 0 # the id from cvat.ai project
