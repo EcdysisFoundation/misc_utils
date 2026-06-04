@@ -1,4 +1,5 @@
 import argparse
+from datetime import datetime, timezone
 import os
 import logging
 import boto3
@@ -109,7 +110,27 @@ def sync_local_to_s3(args):
                 except Exception as e:
                     print(f"❌ Failed to upload {filename}: {e}")
             else:
-                print(f"Skipping (already exists): {s3_key}")
+                try:
+                    response = S3_CLIENT.head_object(Bucket=BUCKET_NAME, Key=s3_key)
+                    s3_last_modified = response['LastModified']
+                    local_mtime = os.path.getmtime(local_path)
+                    local_datetime = datetime.fromtimestamp(local_mtime, tz=timezone.utc)
+                    # 3. Compare timestamps
+                    if local_datetime <= s3_last_modified:
+                        print(f"⏭️ Skipping {local_path} - S3 version is already up-to-date.")
+                    else:
+                        print(f"🚀 Uploading {local_path} to S3...")
+                        try:
+                            S3_CLIENT.upload_file(
+                                local_path,
+                                BUCKET_NAME,
+                                s3_key,
+                                Callback=upload_progress
+                            )
+                        except Exception as e:
+                            print(f"❌ Failed to upload {filename}: {e}")
+                except Exception as e:
+                    print(f'error encountered: {e}')
 
 
 if __name__ == '__main__':
