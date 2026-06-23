@@ -28,8 +28,11 @@ def summarize_json(path, sample_limit=None):
     print(f"Top-level type: {type_name(data)}")
 
     if not isinstance(data, list):
-        print("Expected top-level JSON to be a list.")
-        return
+        if isinstance(data, dict):
+            data = [data]
+        else:
+            print("Expected top-level JSON to be a list.")
+            return
 
     print(f"Top-level list length: {len(data)}")
 
