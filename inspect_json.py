@@ -107,4 +107,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-python inspect_json.py /home/ecdysis/ultralytics/dataset_pan/dataset.json
