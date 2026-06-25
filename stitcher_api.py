@@ -2,6 +2,24 @@ import requests
 from config_secrets import STITCHER_API_URL
 
 
+ERROR_MSG_KEY = 'ERROR'
+
+
+def get_root_message():
+    api_url = STITCHER_API_URL
+    try:
+        response = requests.get(api_url)
+        if response.status_code == 200:
+            data = response.json()
+            return data
+        else:
+            return {ERROR_MSG_KEY: response.status_code}
+    except Exception as e:
+        print(e)
+        return {ERROR_MSG_KEY: e}
+
+
+
 def get_stitcher_data(upload_dir_name=None):
     api_list_url = STITCHER_API_URL + 'list-upload-files/'
     all_data = []
