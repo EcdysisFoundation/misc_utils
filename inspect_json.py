@@ -1,8 +1,30 @@
 #!/usr/bin/env python3
+import argparse
 import json
-import sys
 from collections import Counter, defaultdict
 from statistics import mean
+
+
+# python -m inspect_json --path path/to/file.json --sublist-key annotations
+
+def get_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description='Download cvat.ai labels')
+    parser.add_argument(
+        '--path',
+        required=True,
+        help="Path to file required."
+    )
+    parser.add_argument(
+        '--limit',
+        type=int,
+        help="Limit the number of top level records to investigate"
+    )
+    parser.add_argument(
+        '--sublist-key',
+        help="Investigate a sub-list dictionary entry using the dict key to the list"
+    )
+    return parser.parse_args()
+
 
 def type_name(value):
     if value is None:
@@ -21,14 +43,15 @@ def type_name(value):
         return "dict"
     return type(value).__name__
 
-def summarize_json(path, sample_limit=None):
-    with open(path, "r", encoding="utf-8") as f:
+def summarize_json(args):
+    with open(args.path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     print(f"Top-level type: {type_name(data)}")
 
     if not isinstance(data, list):
         if isinstance(data, dict):
+            print('Top-level JSON is a dict. Converting to a list.')
             data = [data]
         else:
             print("Expected top-level JSON to be a list.")
@@ -42,7 +65,7 @@ def summarize_json(path, sample_limit=None):
     nested_dict_keys = defaultdict(int)
     bad_records = []
 
-    records = data if sample_limit is None else data[:sample_limit]
+    records = data if args.limit is None else data[:args.limit]
     print(f"Records inspected: {len(records)}")
 
     for idx, item in enumerate(records):
@@ -50,15 +73,31 @@ def summarize_json(path, sample_limit=None):
             bad_records.append((idx, type_name(item)))
             continue
 
-        for key, value in item.items():
-            key_presence[key] += 1
-            t = type_name(value)
-            key_type_counts[key][t] += 1
+        if args.sublist_key:
+            sub_records = item[args.sublist_key]
+            for idx, item in enumerate(sub_records):
+                if not isinstance(item, dict):
+                    bad_records.append((idx, type_name(item)))
+                    continue
+                for key, value in item.items():
+                    key_presence[key] += 1
+                    t = type_name(value)
+                    key_type_counts[key][t] += 1
 
-            if isinstance(value, list):
-                list_length_stats[key].append(len(value))
-            elif isinstance(value, dict):
-                nested_dict_keys[key] += 1
+                    if isinstance(value, list):
+                        list_length_stats[key].append(len(value))
+                    elif isinstance(value, dict):
+                        nested_dict_keys[key] += 1
+        else:
+            for key, value in item.items():
+                key_presence[key] += 1
+                t = type_name(value)
+                key_type_counts[key][t] += 1
+
+                if isinstance(value, list):
+                    list_length_stats[key].append(len(value))
+                elif isinstance(value, dict):
+                    nested_dict_keys[key] += 1
 
     print("\n=== Record shape issues ===")
     if bad_records:
@@ -95,15 +134,6 @@ def summarize_json(path, sample_limit=None):
             print(f"  Nested dict values seen: {nested_dict_keys[key]}")
 
 
-def main():
-    if len(sys.argv) < 2:
-        print("Usage: python inspect_json.py path/to/file.json [sample_limit]")
-        sys.exit(1)
-
-    path = sys.argv[1]
-    sample_limit = int(sys.argv[2]) if len(sys.argv) > 2 else None
-    summarize_json(path, sample_limit)
-
-
 if __name__ == "__main__":
-    main()
+    args = get_args()
+    summarize_json(args)
