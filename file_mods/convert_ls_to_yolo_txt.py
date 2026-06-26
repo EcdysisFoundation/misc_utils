@@ -2,8 +2,8 @@ import requests
 import numpy as np
 from PIL import Image
 from pathlib import Path
-from config_secrets import STITCHER_API_URL
-from stitcher_api import get_root_message, ERROR_MSG_KEY
+from ..config_secrets import STITCHER_API_URL
+from ..stitcher_api import get_root_message, ERROR_MSG_KEY
 
 
 # convert label studio to coco, then convert that to yolo
