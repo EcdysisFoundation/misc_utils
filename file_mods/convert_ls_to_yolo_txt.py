@@ -246,7 +246,7 @@ def ls_segmentation_yolo_conversions():
 
                 # get image dims, make sure its there
                 img_dir = f"{IMG_FILE_MOUNT}{row['panorama_path'].replace('/media', '')}"
-                img_filename = str(Path(img_dir).name)
+                img_filename = str(Path(img_dir).stem)
                 label_name = f"{row['upload_dir_name']}__{row['guid']}__{img_filename}"
                 label_path = Path(f"{CVAT_LABEL_DIR_LS_CONVERTIONS}/{label_name}.txt")
 

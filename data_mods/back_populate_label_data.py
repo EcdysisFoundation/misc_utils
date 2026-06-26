@@ -44,9 +44,12 @@ def update_recs_from_directory(args):
 
 if __name__ == '__main__':
     args = get_args()
+    seconds = 60
     print(f"update_recs_from_directory...{args.data_dir}")
     guid_map = update_recs_from_directory(args)
-    time.sleep(60)
+    print(f"Completed, waiting {seconds} seconds before updated_label_post")
+    time.sleep(seconds)
+    print(f"next will updated_label_post for {len(guid_map)} records")
     for guid in guid_map:
         post_params = {
             'guid': guid[0]
