@@ -286,4 +286,12 @@ def ls_segmentation_yolo_conversions():
 
 
 if __name__ == '__main__':
+
+    # avoid DecompressionBombError
+    max_image_pixels = Image.MAX_IMAGE_PIXELS
+    print(f'MAX_IMAGE_PIXES is {Image.MAX_IMAGE_PIXELS}')
+    if max_image_pixels < 180000000:
+        Image.MAX_IMAGE_PIXELS = max_image_pixels * 4
+        print(f'raised MAX_IMAGE_PIXES to {Image.MAX_IMAGE_PIXELS}')
+
     ls_segmentation_yolo_conversions()
