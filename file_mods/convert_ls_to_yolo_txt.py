@@ -202,7 +202,7 @@ def ls_segmentation_yolo_conversions():
     image_id = 0
 
     while True:
-        if True:
+        if False:
             # stop early for testing
             if image_id > 1:
                 break

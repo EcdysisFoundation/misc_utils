@@ -27,7 +27,7 @@ def get_args() -> argparse.Namespace:
 
 def update_recs_from_directory(args):
 
-    label_files = sorted([f for f in os.listdir(args.data_dir) if f.endswith(('.txt'))])
+    label_files = sorted([f for f in os.listdir(f"{args.data_dir}/{args.task_dir}") if f.endswith(('.txt'))])
     guid_map = [(extract_guid(i), i) for i in label_files]
     for v in guid_map:
         post_params = {
