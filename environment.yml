@@ -15,3 +15,8 @@ dependencies:
     - tqdm
     - pyyaml
     - opencv-python-headless
+    - pandas
+    - numpy
+    - plotly
+    - seaborn
+    - matplotlib
