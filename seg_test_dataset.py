@@ -172,9 +172,6 @@ def generate_dataset():
     From a directory of YOLO Segmentation 1.0 labels,
     get their guid and structure YOLO dataset with the high res images.
     Requires guid within the label file name.
-    TODO: modify to use a .csv export from bugbox when selected labels are
-          identified on bugbox and distributed among multiple cvat.ai projects
-          Download pano to archive dir, like in metaformer_ecdysis to ensure exact matching to db.
     """
     dir_path = Path(DATASET_DIR)
     dir_path.mkdir(exist_ok=True)
