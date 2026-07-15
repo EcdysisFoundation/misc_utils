@@ -1,5 +1,5 @@
 import requests
-from .config_secrets import STITCHER_API_URL
+from config_secrets import STITCHER_API_URL
 
 
 ERROR_MSG_KEY = 'ERROR'
