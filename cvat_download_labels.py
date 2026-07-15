@@ -22,6 +22,13 @@ from stitcher_api import updated_label_post
 # --task-dir optionally overrides --task-name as the cvat-tasks directory name
 # --skip-stitcher-notify optionally skips notifying stitcher api
 #
+###############################################################
+# Non Standard uses. These may have been one off use cases, possibly unsupported ...
+#
+# if by project_jobs
+# this option finds jobs within a project that are marked as completed and downloads those to their --task-dir
+# python -m cvat_download_labels --source project_jobs --task-dir my_task_dir --project-name my_project
+#
 # if by task, we are using this for evaluation testing
 # --source task
 # --task-name 'mytask'
@@ -49,6 +56,7 @@ CONFIGURATION = Configuration(
 )
 
 ARGS_PROJECT = 'project'
+ARGS_PROJECT_JOBS = 'project_jobs'
 ARGS_TASKS = 'tasks'
 ARGS_JOBS = 'jobs'
 
@@ -57,7 +65,7 @@ def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Download cvat.ai labels')
     parser.add_argument(
         '--source',
-        choices=[ARGS_PROJECT, ARGS_TASKS, ARGS_JOBS],
+        choices=[ARGS_PROJECT, ARGS_PROJECT_JOBS, ARGS_TASKS, ARGS_JOBS],
         required=True,
         help="Select the source level (required)."
     )
@@ -275,32 +283,56 @@ def get_filtered_job_ids(args):
     if not args.project_name:
         print('get_filtered_job_ids requires option --project-name, returning None')
         return
-    if not args.task_name:
-        print('get_filtered_job_ids requires option --task-name.')
-        return
-    with ApiClient(CONFIGURATION) as api_client:
-        job_ids = []
-        page = 1
-        while True:
-            try:
-                (data, response) = api_client.jobs_api.list(
-                    x_organization=ORGANIZATION_SLUG,
-                    page=page,
-                    page_size=10,
-                    project_name=args.project_name,
-                    stage=args.stage,
-                    state=args.state,
-                    task_name=args.task_name,
-                )
-                job_ids += [job.id for job in data['results']]
-                if data['next'] is None:
+    if args.task_name:
+        with ApiClient(CONFIGURATION) as api_client:
+            job_ids = []
+            page = 1
+            while True:
+                try:
+                    (data, response) = api_client.jobs_api.list(
+                        x_organization=ORGANIZATION_SLUG,
+                        page=page,
+                        page_size=10,
+                        project_name=args.project_name,
+                        stage=args.stage,
+                        state=args.state,
+                        task_name=args.task_name,
+                    )
+                    job_ids += [job.id for job in data['results']]
+                    if data['next'] is None:
+                        break
+                    page += 1
+                except exceptions.ApiException as e:
+                    print("Exception when calling JobsApi.list(): %s\n" % e)
                     break
-                page += 1
-            except exceptions.ApiException as e:
-                print("Exception when calling JobsApi.list(): %s\n" % e)
-                break
-        print(f'Found {len(job_ids)} job ids')
-        return job_ids
+            print(f'Found {len(job_ids)} job ids')
+            return job_ids
+    elif args.source == ARGS_PROJECT_JOBS:
+        with ApiClient(CONFIGURATION) as api_client:
+            job_ids = []
+            page = 1
+            while True:
+                try:
+                    (data, response) = api_client.jobs_api.list(
+                        x_organization=ORGANIZATION_SLUG,
+                        page=page,
+                        page_size=10,
+                        project_name=args.project_name,
+                        stage=args.stage,
+                        state=args.state,
+                    )
+                    job_ids += [job.id for job in data['results']]
+                    if data['next'] is None:
+                        break
+                    page += 1
+                except exceptions.ApiException as e:
+                    print("Exception when calling JobsApi.list(): %s\n" % e)
+                    break
+            print(f'Found {len(job_ids)} job ids')
+            return job_ids
+    else:
+        print(f'valid args not given to get_filtered_job_ids, args {args}..')
+        return None
 
 
 def main(args):
@@ -323,6 +355,39 @@ def main(args):
             }
             # BASE_DIR_TASKS is tied to Stitcher app, must notify
             updated_label_post(post_params)
+
+    elif args.source == ARGS_PROJECT_JOBS:
+        if not args.task_dir and not args.project_name:
+            print(f'args --task-dir and --project-name are required when --source is {ARGS_PROJECT_JOBS}')
+            return
+        data_dir_task = f'{BASE_DIR_TASKS}{args.task_dir}'
+        print(f'the data_dir_task is {data_dir_task}. Files will be saved here.')
+        job_ids = get_filtered_job_ids(args)
+        guids = []
+        if not job_ids:
+            print('Found no jobs, exiting..')
+            return
+        print(f'Found {len(job_ids)} job ids')
+        populated_download_dir = download_by_job_ids(job_ids, data_dir_task)
+        if not populated_download_dir:
+            print('There was no populated_download_dir, exiting..')
+            return
+        print(f'Finished downloading jobs, into {populated_download_dir}')
+        print(f'Getting zip files from {populated_download_dir}')
+        zip_paths = get_zip_file_paths(populated_download_dir)
+        print(f'Extracting {len(zip_paths)} zip_paths')
+        for task_zip_path in zip_paths:
+            extracted_files = extract_and_cleanup_labels(task_zip_path, populated_download_dir)
+            guids += extracted_files
+        print(f'Extracted labels for {len(guids)} guids')
+        if not args.skip_stitcher_notify:
+            print('Notifying stitcher of these guids')
+            for guid in guids:
+                post_params = {
+                    'guid': guid
+                }
+                # BASE_DIR_TASKS is tied to Stitcher app, must notify
+                updated_label_post(post_params)
 
     elif args.source == ARGS_TASKS:
 
