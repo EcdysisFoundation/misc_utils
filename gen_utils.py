@@ -1,6 +1,7 @@
 import re
-from uuid import UUID
 import cv2
+from uuid import UUID
+from pathlib import Path
 
 
 def extract_guid(text):
@@ -40,3 +41,54 @@ def load_resize_and_save_thumbnail(path, thumbnail_path, new_width=600):
     if not success:
         raise IOError(f"Could not write image: {thumbnail_path}")
     return
+
+
+def analyze_txt_files_for_empties(directory_path: str):
+    """
+    Opens all .txt files in a directory and counts how many are empty
+    versus how many have actual content.
+    """
+    target_dir = Path(directory_path)
+
+    # Safety check: Ensure the directory exists
+    if not target_dir.is_dir():
+        print(f"Error: The directory '{directory_path}' does not exist.")
+        return
+
+    empty_count = 0
+    content_count = 0
+    total_files = 0
+
+    print(f"Analyzing .txt files in '{directory_path}'...\n")
+
+    # Look for all files ending with .txt
+    for file_path in target_dir.glob("*.txt"):
+        if file_path.is_file():
+            total_files += 1
+            try:
+                # Open and read the file
+                content = file_path.read_text(encoding="utf-8")
+
+                # .strip() removes whitespace, ensuring files with just spaces/newlines count as empty
+                if not content.strip():
+                    print(f"  [Empty]  {file_path.name}")
+                    empty_count += 1
+                else:
+                    print(f"  [Content] {file_path.name}")
+                    content_count += 1
+            except Exception as e:
+                print(f"  [Error]   Could not read {file_path.name}. Error: {e}")
+
+    # Display the final summary
+    print("\n" + "-" * 40)
+    print("ANALYSIS SUMMARY")
+    print("-" * 40)
+    print(f"Total .txt files scanned: {total_files}")
+    print(f"Files with content:       {content_count}")
+    print(f"Empty files:              {empty_count}")
+    print("-" * 40)
+    return {
+        'total_files': total_files,
+        'content_count': content_count,
+        'empty_count': empty_count
+    }
