@@ -1,5 +1,5 @@
-import re
 import cv2
+import re
 from uuid import UUID
 from pathlib import Path
 
@@ -74,7 +74,7 @@ def analyze_txt_files_for_empties(directory_path: str):
                     print(f"  [Empty]  {file_path.name}")
                     empty_count += 1
                 else:
-                    print(f"  [Content] {file_path.name}")
+                    print(f"  [{len(content)} chars] {file_path.name}")
                     content_count += 1
             except Exception as e:
                 print(f"  [Error]   Could not read {file_path.name}. Error: {e}")
