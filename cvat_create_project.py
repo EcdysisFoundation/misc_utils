@@ -26,7 +26,7 @@ from stitcher_api import post_sent_ls
 
 BASE_DIR = '/pool1/srv/cvat-tasks/'
 LABEL_MAP = {0: 'Arthropod'}
-ORGANIZATION_SLUG = 'Ecdysis'
+ORGANIZATION_SLUG = ''
 CVAT_CLIENT_URL = 'https://app.cvat.ai/'
 CONFIGURATION = Configuration(
     host=CVAT_CLIENT_URL,
@@ -45,6 +45,10 @@ def get_args() -> argparse.Namespace:
         '--project-name',
         required=True,
         help="The project-name and cvat.ai"
+    )
+    parser.add_argument(
+        '--bypass-stitcher', action='store_true',
+        help='dont notify the stitcher api'
     )
     args = parser.parse_args()
     return args
