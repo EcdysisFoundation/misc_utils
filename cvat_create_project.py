@@ -301,4 +301,5 @@ if __name__ == '__main__':
 
     if task_created:
         task_id = patch_annotations(args)
-        notify_stitcher(args, task_id)
+        if not args.bypass_stitcher:
+            notify_stitcher(args, task_id)
