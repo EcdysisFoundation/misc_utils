@@ -26,7 +26,6 @@ from stitcher_api import post_sent_ls
 
 BASE_DIR = '/pool1/srv/cvat-tasks/'
 LABEL_MAP = {0: 'Arthropod'}
-ORGANIZATION_SLUG = ''
 CVAT_CLIENT_URL = 'https://app.cvat.ai/'
 CONFIGURATION = Configuration(
     host=CVAT_CLIENT_URL,
@@ -45,6 +44,11 @@ def get_args() -> argparse.Namespace:
         '--project-name',
         required=True,
         help="The project-name and cvat.ai"
+    )
+    parser.add_argument(
+        '--org-name',
+        type=str,
+        default=''
     )
     parser.add_argument(
         '--bypass-stitcher', action='store_true',
@@ -67,7 +71,7 @@ def create_task_from_directory(args):
     data_dir = get_data_dir(args)
     print(f'Data directory is {data_dir}')
     with make_client(CVAT_CLIENT_URL, access_token=CVAT_APIKEY) as client:
-        client.organization_slug = ORGANIZATION_SLUG
+        client.organization_slug = args.org_name
 
         # Get or set project
         project = None
@@ -137,7 +141,7 @@ def create_task_from_directory(args):
     return True
 
 
-def search_tasks_by_project(project_id, task_name):
+def search_tasks_by_project(project_id, task_name, args):
     """
     Returns one task id filtered by criteria, or None.
     """
@@ -147,7 +151,7 @@ def search_tasks_by_project(project_id, task_name):
         page = 1
         while True:
             (data, _) = api_client.tasks_api.list(
-                x_organization=ORGANIZATION_SLUG,
+                x_organization=args.org_name,
                 page=page,
                 project_id=project_id,
                 search=task_name,
@@ -180,7 +184,7 @@ def patch_annotations(args):
 
         # Find the task inside that specific project using the task name, we use the TASK_DIR
         print(f"Searching for task: '{args.task_dir}' within project...")
-        task_id = search_tasks_by_project(project.id, args.task_dir)
+        task_id = search_tasks_by_project(project.id, args.task_dir, args)
         if not task_id:
             raise ValueError(f"Task '{args.task_dir}' not found in project '{args.project_name}'.")
         print(f"Found Task! ID: {task_id}")
@@ -227,7 +231,7 @@ def patch_annotations(args):
         return task_id
 
 
-def get_task_jobs(task_id):
+def get_task_jobs(task_id, args):
     """
     Returns jobs for a task.
     """
@@ -237,7 +241,7 @@ def get_task_jobs(task_id):
         page = 1
         while True:
             (data, _) = api_client.jobs_api.list(
-                x_organization=ORGANIZATION_SLUG,
+                x_organization=args.org_name,
                 page=page,
                 task_id=task_id,
                 page_size=100
@@ -254,7 +258,7 @@ def notify_stitcher(args, task_id):
     with make_client(CVAT_CLIENT_URL, access_token=CVAT_APIKEY) as client:
         task = client.tasks.retrieve(task_id)
         meta = task.get_meta()
-        jobs = get_task_jobs(task.id)
+        jobs = get_task_jobs(task.id, args)
 
         for img in img_files:
             frame_id = None
