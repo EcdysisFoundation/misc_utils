@@ -23,7 +23,12 @@ from stitcher_api import updated_label_post
 # --skip-stitcher-notify optionally skips notifying stitcher api
 #
 ###############################################################
-# Non Standard uses. These may have been one off use cases, possibly unsupported ...
+# Non Standard uses.
+#
+# if only_get_rejected, bypasses download labels, but is also ran if using cvat_download_labels with --source jobs
+# python -m cvat_download_labels --only-get-rejected --project-name 'my_project' --task-name 'my_task_name'
+#
+# These may have been one off use cases, possibly unsupported ...
 #
 # if by project_jobs
 # this option finds jobs within a project that are marked as completed and downloads those to their --task-dir
@@ -114,6 +119,11 @@ def get_args() -> argparse.Namespace:
         '--state',
         default='completed',
         help='The cvat.ai stage field filter'
+    )
+    parser.add_argument(
+        '--only-get-rejected',
+        action='store_true',
+        help='bypasses download labels, but is also ran if using cvat_download_labels with --source jobs'
     )
     args = parser.parse_args()
     print(f'--source set to {args.source}')
@@ -335,6 +345,45 @@ def get_filtered_job_ids(args):
         return None
 
 
+def get_rejected_job_ids(args):
+    with ApiClient(CONFIGURATION) as api_client:
+        job_ids = []
+        page = 1
+        while True:
+            try:
+                (data, response) = api_client.jobs_api.list(
+                    x_organization=ORGANIZATION_SLUG,
+                    page=page,
+                    page_size=10,
+                    project_name=args.project_name,
+                    state='rejected',
+                    task_name=args.task_name,
+                )
+                job_ids += [job.id for job in data['results']]
+                if data['next'] is None:
+                    break
+                page += 1
+            except exceptions.ApiException as e:
+                print("Exception when calling JobsApi.list(): %s\n" % e)
+                break
+        print(f'Found {len(job_ids)} job ids marked as rejected')
+        return job_ids
+
+
+def report_rejected(args):
+
+    jobids = get_rejected_job_ids(args)
+    print(jobids)
+    with ApiClient(CONFIGURATION) as api_client:
+        for job_id in jobids:
+            try:
+                (data, response) = api_client.jobs_api.retrieve_data_meta(job_id)
+                print(data)
+            except exceptions.ApiException as e:
+                print("Exception when calling JobsApi.retrieve_data_meta(): %s\n" % e)
+
+
+
 def main(args):
 
     if args.source == ARGS_PROJECT:
@@ -465,4 +514,7 @@ def main(args):
 
 if __name__ == '__main__':
     args = get_args()
-    main(args)
+    if args.only_get_rejected:
+        report_rejected(args)
+    else:
+        main(args)
