@@ -10,7 +10,7 @@ from cvat_sdk.api_client.exceptions import ApiException
 
 from config_secrets import CVAT_APIKEY
 from gen_utils import extract_guid
-from stitcher_api import updated_label_post
+from stitcher_api import updated_label_post, mark_rejected_post
 
 ##############################################################
 # Download CVAT.ai labels for project, tasks, or jobs.
@@ -370,9 +370,7 @@ def get_rejected_job_ids(args):
 
 
 def report_rejected(args):
-
     jobids = get_rejected_job_ids(args)
-    print(jobids)
     with ApiClient(CONFIGURATION) as api_client:
         for job_id in jobids:
             try:
@@ -380,7 +378,16 @@ def report_rejected(args):
                 print(data)
             except exceptions.ApiException as e:
                 print("Exception when calling JobsApi.retrieve_data_meta(): %s\n" % e)
-
+            if data and data.get('frames'):
+                for frame in data['frames']:
+                    frame_name = frame.get('name')
+                    params = {
+                        'guid': extract_guid(frame_name),
+                        'label_file_rejected': frame_name,
+                        'label_job_id': job_id
+                    }
+                    mark_rejected_post(params)
+                    print(f'marked rejected: {frame_name}')
 
 
 def main(args):
@@ -436,6 +443,8 @@ def main(args):
                 }
                 # BASE_DIR_TASKS is tied to Stitcher app, must notify
                 updated_label_post(post_params)
+            print('Checking for rejected labels in this job to notify stitcher.')
+            report_rejected(args)
 
     elif args.source == ARGS_TASKS:
 

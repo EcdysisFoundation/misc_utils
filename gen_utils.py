@@ -5,11 +5,11 @@ from pathlib import Path
 
 
 def extract_guid(text):
+    if not text:
+        return None
     # Pattern for a standard UUID (hexadecimal chars in 8-4-4-4-12 format)
     guid_pattern = r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}'
-
     match = re.search(guid_pattern, text, re.IGNORECASE)
-
     if match:
         found_str = match.group(0)
         try:
