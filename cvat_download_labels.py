@@ -71,7 +71,6 @@ def get_args() -> argparse.Namespace:
     parser.add_argument(
         '--source',
         choices=[ARGS_PROJECT, ARGS_PROJECT_JOBS, ARGS_TASKS, ARGS_JOBS],
-        required=True,
         help="Select the source level (required)."
     )
     parser.add_argument(
@@ -516,5 +515,7 @@ if __name__ == '__main__':
     args = get_args()
     if args.only_get_rejected:
         report_rejected(args)
-    else:
+    elif args.source:
         main(args)
+    else:
+        print('No actions taken, check args for conformity: {args}')
