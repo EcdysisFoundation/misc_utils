@@ -96,6 +96,11 @@ def updated_label_post(post_params):
     simple_post_w_params(api_post_url, post_params)
 
 
+def mark_rejected_post(post_params):
+    api_post_url = STITCHER_API_URL + 'mark_labels_rejected/'
+    simple_post_w_params(api_post_url, post_params)
+
+
 def get_label_file_status(data):
     """
     Check if label file updated. Small difference in time can be api call artifact.
