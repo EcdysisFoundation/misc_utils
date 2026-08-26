@@ -375,7 +375,6 @@ def report_rejected(args):
         for job_id in jobids:
             try:
                 (data, response) = api_client.jobs_api.retrieve_data_meta(job_id)
-                print(data)
             except exceptions.ApiException as e:
                 print("Exception when calling JobsApi.retrieve_data_meta(): %s\n" % e)
             if data and data.get('frames'):
